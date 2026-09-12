@@ -33,4 +33,4 @@ Thumbs.db
 # Python build files
 build/
 dist/
-*.egg-info/
+*.egg-info/cleaned_weather_data.csv

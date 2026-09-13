@@ -136,6 +136,46 @@ export async function getAnomalyTrend() {
   }, { label: 'anomaly trend' });
 }
 
+// ─── Manual Sensor Check ────────────────────────────────────────────────────
+export async function getManualStations() {
+  // prefers dedicated manual stations endpoint, falls back to full stations
+  try {
+    const res = await fetch(`${BASE_URL}/api/manual/stations`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    // data is {total, stations:[{station_id,city}]}
+    if (data && data.stations) return data;
+    return data;
+  } catch (e) {
+    // fallback to existing stations endpoint
+    console.warn(`Manual stations fetch failed, trying /api/stations: ${e.message}`);
+    const stations = await getStations();
+    // normalize to {total, stations}
+    if (Array.isArray(stations)) {
+      return {
+        total: stations.length,
+        stations: stations.map((s) => ({ station_id: s.station_id, city: s.city || s.location })),
+      };
+    }
+    return stations;
+  }
+}
+
+export async function manualSensorCheck({ station_id, temperature, humidity, pressure }) {
+  const res = await fetch(`${BASE_URL}/api/manual-check`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ station_id, temperature, humidity, pressure }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    // backend returns {detail: "Unsupported Station ID..."} or {success:false, error:...}
+    const msg = data.detail || data.error || `Manual check failed: ${res.status}`;
+    throw new Error(msg);
+  }
+  return data;
+}
+
 // Extra helpers for direct backend inspection
 export async function getWeather(limit = 20) {
   return fetchWithFallback(`${BASE_URL}/api/weather?limit=${limit}`, async () => [], { label: 'weather' });

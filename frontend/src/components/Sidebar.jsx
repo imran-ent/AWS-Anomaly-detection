@@ -8,6 +8,7 @@ import {
   Bell,
   Zap,
   Activity,
+  FlaskConical,
 } from 'lucide-react';
 import { getDashboardSummary, getAnomalies } from '../services/api';
 
@@ -16,6 +17,7 @@ const baseNav = [
   { to: '/weather', label: 'Live Weather Data', icon: CloudRain },
   { to: '/anomalies', label: 'Anomaly Monitoring', icon: AlertTriangle },
   { to: '/alerts', label: 'Alerts', icon: Bell },
+  { to: '/manual-check', label: 'Manual Sensor Check', icon: FlaskConical },
 ];
 
 export default function Sidebar() {

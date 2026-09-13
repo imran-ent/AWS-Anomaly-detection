@@ -5,6 +5,7 @@ import WeatherData from './pages/WeatherData';
 import AnomalyMonitoring from './pages/AnomalyMonitoring';
 import StationDetail from './pages/StationDetail';
 import Alerts from './pages/Alerts';
+import ManualCheck from './pages/ManualCheck';
 import './index.css';
 
 export default function App() {
@@ -19,6 +20,7 @@ export default function App() {
             <Route path="/anomalies" element={<AnomalyMonitoring />} />
             <Route path="/stations/:stationId" element={<StationDetail />} />
             <Route path="/alerts" element={<Alerts />} />
+            <Route path="/manual-check" element={<ManualCheck />} />
           </Routes>
         </div>
       </div>

@@ -12,6 +12,7 @@ from services.pipeline import run_detection_pipeline
 from routers.dashboard import router as dashboard_router
 from routers.stations import router as stations_router
 from routers.anomalies import router as anomalies_router
+from routers.manual import router as manual_router
 
 app = FastAPI(
     title="METEORA API",
@@ -190,7 +191,8 @@ def warm_cache():
     # Run in daemon thread so startup doesn't block (uvicorn startup must return quickly)
     threading.Thread(target=_warm, daemon=True).start()
 
-# Include routers (dashboard, stations, anomalies)
+# Include routers (dashboard, stations, anomalies, manual)
 app.include_router(dashboard_router)
 app.include_router(stations_router)
 app.include_router(anomalies_router)
+app.include_router(manual_router)

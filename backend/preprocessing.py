@@ -32,6 +32,11 @@ def preprocess_data(df):
     # 1. Standardize column names in case old-style names are used
     rename_map = {
         "Station_ID": "station_id",
+        "City": "city",
+        "Datetime": "timestamp",
+        "Temp_2m_C": "temperature",
+        "Humidity_Percent": "humidity",
+        "Pressure_MSL_hPa": "pressure",
         "temperature in c": "temperature",
         "humidity in %": "humidity",
     }

@@ -1,76 +1,156 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, Response
+import pandas as pd
+import numpy as np
+import math
+import threading
+
 from services.data_service import get_weather_data
 from services.preprocessing import preprocess_data
 from services.pipeline import run_detection_pipeline
 from routers.dashboard import router as dashboard_router
+from routers.stations import router as stations_router
+from routers.anomalies import router as anomalies_router
 
 app = FastAPI(
     title="METEORA API",
-    description="AI/ML Weather Station Anomaly Detection"
+    description="AI/ML Weather Station Anomaly Detection — SIH 2026",
+    version="2.0.0",
 )
 
+# CORS for frontend — keep centralized; allow both localhost and 127.0.0.1 (vite uses 5173)
+# Use explicit origins for dev; regex covers both hostname variants and any localhost port.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173"
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:3000",
     ],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+def _sanitize_records(df: pd.DataFrame, tail: int = None):
+    """Convert DataFrame to JSON-safe records: handle NaN, Timestamp, numpy types."""
+    # Work on a copy to avoid mutating the cached DataFrame (prevents h11 Content-Length race)
+    if tail:
+        df = df.tail(tail).copy()
+    else:
+        df = df.copy()
+    # Replace NaN/inf with None for JSON
+    df = df.replace([np.inf, -np.inf], np.nan)
+    # Convert timestamps to ISO strings
+    for col in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            df[col] = df[col].apply(lambda x: x.isoformat() if pd.notna(x) else None)
+    records = df.to_dict(orient="records")
+    # Further sanitize each value
+    safe = []
+    for rec in records:
+        s = {}
+        for k, v in rec.items():
+            if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+                s[k] = None
+            elif isinstance(v, (np.integer,)):
+                s[k] = int(v)
+            elif isinstance(v, (np.floating,)):
+                s[k] = float(v) if not math.isnan(float(v)) else None
+            elif isinstance(v, (pd.Timestamp,)):
+                s[k] = v.isoformat()
+            elif isinstance(v, (np.bool_,)):
+                s[k] = bool(v)
+            else:
+                s[k] = v
+        safe.append(s)
+    return safe
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    # Avoid 404 noise when browser requests /favicon.ico from backend origin.
+    # 204 must have no body, so use plain Response (JSONResponse with content=None would send 'null' and cause h11 Content-Length error).
+    return Response(status_code=204)
 
 @app.get("/")
 def home():
-    return {
-        "message": "METEORA Backend Running"
-    }
+    return {"message": "METEORA Backend Running", "docs": "/docs", "health": "/api/health"}
+
 @app.get("/api/health")
 def health():
-    return {
-        "status": "healthy",
-        "service": "METEORA Backend"
-    }
+    return {"status": "healthy", "service": "METEORA Backend", "version": "2.0.0"}
+
 @app.get("/api/weather")
-def weather():
+def weather(limit: int = Query(20, ge=1, le=1000)):
+    try:
+        df = get_weather_data()
+        return _sanitize_records(df, tail=limit)
+    except FileNotFoundError as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": f"Weather load failed: {e}"})
 
-    df = get_weather_data()
-
-    return df.tail(20).to_dict(
-        orient="records"
-    )
 @app.get("/api/weather/clean")
+def clean_weather(limit: int = Query(20, ge=1, le=1000)):
+    try:
+        df = get_weather_data()
+        # use last 1000 per station for meaningful scaling? but for clean endpoint just tail raw then clean
+        # to keep scaling stable, take tail per station
+        if "Station_ID" in df.columns:
+            df = df.groupby("Station_ID").tail(500)
+        cleaned_df = preprocess_data(df)
+        return _sanitize_records(cleaned_df, tail=limit)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": f"Cleaning failed: {e}"})
 
-def clean_weather():
-
-    df = get_weather_data()
-
-    cleaned_df = preprocess_data(df)
-
-    return cleaned_df.tail(20).to_dict(
-        orient="records"
-    )
 @app.get("/api/detect")
-def detect():
+def detect(limit: int = Query(50, ge=1, le=500)):
+    try:
+        # Use cached pipeline via dashboard helper for speed
+        from routers.dashboard import _get_df
+        df = _get_df()
+        return _sanitize_records(df, tail=limit)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": f"Detection failed: {e}"})
 
-    df = run_detection_pipeline()
+@app.get("/api/anomalies-legacy")
+def anomalies_legacy(limit: int = Query(50, ge=1, le=500)):
+    """Legacy endpoint kept for compatibility; new canonical is /api/anomalies via anomalies router"""
+    try:
+        from routers.dashboard import _get_df
+        df = _get_df()
+        if "is_anomaly" in df.columns:
+            anomalies = df[df["is_anomaly"] == True]
+        elif "status" in df.columns:
+            anomalies = df[df["status"] == "ANOMALY"]
+        else:
+            anomalies = df.iloc[0:0]
+        return _sanitize_records(anomalies, tail=limit)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
-    return df.tail(50).to_dict(
-        orient="records"
-    )
-@app.get("/api/anomalies")
-def anomalies():
+# Startup warm-up: pre-compute ML cache so first concurrent frontend requests don't all block on cold 3-4s compute
+# Without this, 4 parallel fetches (dashboard+stations+alerts+trend) would queue on _CACHE_LOCK and timeout.
+@app.on_event("startup")
+def warm_cache():
+    def _warm():
+        try:
+            from routers.dashboard import _get_df
+            _get_df()
+            print("[METEORA] cache warmed successfully")
+        except Exception as e:
+            print(f"[METEORA] cache warm failed: {e}")
+    # Run in daemon thread so startup doesn't block (uvicorn startup must return quickly)
+    threading.Thread(target=_warm, daemon=True).start()
 
-    df = run_detection_pipeline()
-
-    anomalies = df[
-        df["status"] == "ANOMALY"
-    ]
-
-    return anomalies.to_dict(
-        orient="records"
-    )
-app.include_router(
-    dashboard_router
-)
+# Include routers (dashboard, stations, anomalies)
+app.include_router(dashboard_router)
+app.include_router(stations_router)
+app.include_router(anomalies_router)

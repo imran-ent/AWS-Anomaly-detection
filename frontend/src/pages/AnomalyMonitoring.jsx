@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import { SeverityBadge, formatTime } from '../components/Badges';
-import { getAnomalies, getAnomalyTrend } from '../services/api';
+import { getAnomalies, getAnomalyTrend, getDashboardSummary } from '../services/api';
 
 const PARAMETER_LABELS = {
   temperature: 'Temperature',
@@ -26,6 +26,7 @@ const PARAMETER_LABELS = {
   rainfall: 'Rainfall',
   wind_speed: 'Wind Speed',
   pressure: 'Pressure',
+  multivariate: 'Multivariate Pattern',
 };
 
 const SEVERITY_ORDER = { High: 0, Medium: 1, Low: 2 };
@@ -59,18 +60,25 @@ const CustomTooltip = ({ active, payload, label }) => {
 export default function AnomalyMonitoring() {
   const [anomalies, setAnomalies] = useState([]);
   const [trend, setTrend] = useState([]);
+  const [totalAnomalies, setTotalAnomalies] = useState(null);
+  const [isMock, setIsMock] = useState(false);
   const [loading, setLoading] = useState(true);
   const [severityFilter, setSeverityFilter] = useState('All');
   const navigate = useNavigate();
 
   useEffect(() => {
-    Promise.all([getAnomalies(), getAnomalyTrend()])
-      .then(([a, t]) => {
+    Promise.all([getAnomalies(), getAnomalyTrend(), getDashboardSummary()])
+      .then(([a, t, summary]) => {
         const sorted = [...a].sort(
           (x, y) => SEVERITY_ORDER[x.severity] - SEVERITY_ORDER[y.severity]
         );
         setAnomalies(sorted);
         setTrend(t);
+        // total from centralized dashboard is source of truth (anomaliesDetected = all anomalies in window)
+        if (summary && typeof summary.anomaliesDetected === 'number') setTotalAnomalies(summary.anomaliesDetected);
+        else if (summary && typeof summary.totalAnomalies === 'number') setTotalAnomalies(summary.totalAnomalies);
+        if (summary && summary._isMock) setIsMock(true);
+        if (a && a._isMock) setIsMock(true);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -92,7 +100,7 @@ export default function AnomalyMonitoring() {
     <>
       <TopBar
         title="Anomaly Monitoring"
-        subtitle={`${anomalies.length} anomalies detected · ${highCount} critical`}
+        subtitle={`${totalAnomalies !== null ? totalAnomalies : anomalies.length} total anomalies${isMock ? ' · DEMO DATA' : ''} · ${highCount} high severity`}
       />
 
       <div className="page-wrapper">
@@ -106,10 +114,16 @@ export default function AnomalyMonitoring() {
               </p>
             </div>
             {/* Severity summary pills */}
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <span className="badge badge-high">{highCount} High</span>
               <span className="badge badge-medium">{medCount} Medium</span>
               <span className="badge badge-low">{lowCount} Low</span>
+              {totalAnomalies !== null && anomalies.length < totalAnomalies && (
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  Showing {anomalies.length} of {totalAnomalies} (limit 100) — use API limit param for more
+                </span>
+              )}
+              {isMock && <span style={{ fontSize: 11, color: '#f97316', fontWeight: 700 }}>DEMO DATA</span>}
             </div>
           </div>
         </div>
@@ -213,7 +227,8 @@ export default function AnomalyMonitoring() {
               <span
                 style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}
               >
-                Showing {filtered.length} records
+                {totalAnomalies !== null ? `Showing ${filtered.length} of ${totalAnomalies} total` : `Showing ${filtered.length} records`}
+                {anomalies[0]?._isMock || isMock ? ' · DEMO' : ''}
               </span>
             </div>
 
@@ -233,7 +248,7 @@ export default function AnomalyMonitoring() {
                       <th>Station ID</th>
                       <th>Parameter</th>
                       <th>Anomaly Value</th>
-                      <th>Expected Range</th>
+                      <th>Expected Range <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, color: 'var(--text-muted)' }}>(rolling mean ±2σ)</span></th>
                       <th>Severity</th>
                       <th>
                         <div className="flex-row" style={{ gap: 5 }}>
@@ -270,9 +285,14 @@ export default function AnomalyMonitoring() {
                               color: 'var(--text-primary)',
                               textTransform: 'capitalize',
                             }}
+                            title={anomaly.parameter === 'multivariate' ? 'Multivariate weather pattern — anomaly from combined features/temporal pattern' : ''}
                           >
                             {PARAMETER_LABELS[anomaly.parameter] || anomaly.parameter}
+                            {anomaly.parameter === 'multivariate' && <span style={{ fontSize: 10, color: 'var(--text-muted)' }}> (pattern)</span>}
                           </span>
+                          {anomaly.ground_truth_fault_type && (
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>GT: {anomaly.ground_truth_fault_type}</div>
+                          )}
                         </td>
                         <td>
                           <span
@@ -280,25 +300,32 @@ export default function AnomalyMonitoring() {
                               fontWeight: 800,
                               fontSize: 15,
                               color:
-                                anomaly.severity === 'High'
+                                anomaly.anomaly_value == null
+                                  ? 'var(--text-muted)'
+                                  : anomaly.severity === 'High'
                                   ? 'var(--status-high)'
                                   : anomaly.severity === 'Medium'
                                   ? 'var(--status-medium)'
                                   : 'var(--status-low)',
                             }}
                           >
-                            {anomaly.anomaly_value}
+                            {anomaly.anomaly_value ?? 'N/A'}
                           </span>
+                          {anomaly.anomaly_score != null && (
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>score {anomaly.anomaly_score}</div>
+                          )}
                         </td>
                         <td>
                           <span
                             style={{
                               fontSize: 12,
-                              color: 'var(--text-secondary)',
+                              color: anomaly.is_inside_expected_range ? '#f97316' : 'var(--text-secondary)',
                               fontFamily: 'monospace',
                             }}
+                            title={anomaly.is_inside_expected_range ? 'Value is inside univariate rolling range — anomaly is multivariate/temporal (frozen sensor, pattern)' : 'Value outside rolling expected range'}
                           >
                             {anomaly.expected_range}
+                            {anomaly.is_inside_expected_range && <span style={{ fontSize: 10 }}> *</span>}
                           </span>
                         </td>
                         <td>
@@ -322,6 +349,11 @@ export default function AnomalyMonitoring() {
                 </table>
               </div>
             </motion.div>
+            <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+              <span style={{ color: '#f97316' }}>*</span> Value inside rolling expected range — flagged by ML due to multivariate/temporal pattern (e.g., frozen sensor repeating value, inconsistent multi-parameter combination). Expected range = rolling mean ± 2σ (window 5) from <code>features.py:create_features()</code>, truthful per-station rolling stats. For <code>multivariate</code> parameter, the displayed value is the most deviating parameter but the anomaly is combination-based. Communication Error shows N/A.
+              <br />
+              Severity derived from ML <code>anomaly_score</code>: High ≥0.75 (Critical ≥0.9), Medium ≥0.55, Low otherwise. Forced deterministic anomalies (frozen/missing) floored at 0.85 → High.
+            </div>
           </>
         )}
       </div>

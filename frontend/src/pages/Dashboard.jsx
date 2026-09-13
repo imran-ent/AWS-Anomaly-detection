@@ -105,6 +105,7 @@ export default function Dashboard() {
   const [summary, setSummary] = useState(null);
   const [trend, setTrend] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [backendError, setBackendError] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -112,7 +113,9 @@ export default function Dashboard() {
       .then(([s, t]) => {
         setSummary(s);
         setTrend(t);
+        if (s && s._isMock) setBackendError('Backend unavailable — showing DEMO DATA');
       })
+      .catch((e) => setBackendError(e.message))
       .finally(() => setLoading(false));
   }, []);
 
@@ -141,9 +144,11 @@ export default function Dashboard() {
             Anomaly Detection for AWS
           </h1>
           <p className="hero-tagline">
-            Real-time anomaly detection across 15 Automatic Weather Stations using
+            Real-time anomaly detection across {summary?.totalStations ?? '29'} Automatic Weather Stations using
             machine learning. Instantly identifies sensor faults, extreme events, and
             data anomalies — before they become disasters.
+            {summary?._isMock && <span style={{ color: '#f97316', fontWeight: 700 }}> · DEMO DATA (backend offline)</span>}
+            {summary?.dataset && <span style={{ color: 'var(--text-muted)', fontSize: 11 }}> · Dataset: {summary.dataset}</span>}
           </p>
         </motion.div>
 
@@ -331,7 +336,7 @@ export default function Dashboard() {
               </motion.div>
             </div>
 
-            {/* Quick Links */}
+            {/* Quick Links — values traceable to backend summary */}
             <motion.div
               className="card mt-6"
               initial={{ opacity: 0, y: 20 }}
@@ -340,6 +345,7 @@ export default function Dashboard() {
             >
               <div className="card-header">
                 <div className="card-title">Quick Access</div>
+                {backendError && <span style={{ fontSize: 11, color: '#f97316' }}>{backendError}</span>}
               </div>
               <div
                 style={{
@@ -351,21 +357,21 @@ export default function Dashboard() {
                 {[
                   {
                     label: 'Live Weather Data',
-                    sub: 'View all station readings',
+                    sub: `${summary?.totalStations ?? '—'} stations · ${summary?.totalRecords ?? '—'} records in window`,
                     to: '/weather',
                     color: 'var(--accent-cyan)',
                     bg: 'var(--accent-cyan-dim)',
                   },
                   {
                     label: 'Anomaly Monitor',
-                    sub: '8 anomalies detected today',
+                    sub: `${summary?.anomaliesDetected ?? summary?.anomaliesToday ?? '—'} anomalies in current window`,
                     to: '/anomalies',
                     color: 'var(--status-high)',
                     bg: 'var(--status-high-dim)',
                   },
                   {
                     label: 'Active Alerts',
-                    sub: '3 unread alerts pending',
+                    sub: `${summary?.activeAlerts ?? '—'} active alerts (High+Medium)`,
                     to: '/alerts',
                     color: 'var(--status-medium)',
                     bg: 'var(--status-medium-dim)',

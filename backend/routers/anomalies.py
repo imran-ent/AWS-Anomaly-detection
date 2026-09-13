@@ -12,33 +12,74 @@ def _severity_map(s):
     return m.get(str(s).lower(), "Low")
 
 def _param_from_fault(row):
+    """
+    Truthful parameter mapping.
+    - Communication Error -> no valid sensor value, return multivariate/sensor
+    - Frozen Sensor -> sensor repeats across all params, so multivariate temporal pattern
+    - Spike -> pick the param with largest rate magnitude (truthful univariate spike)
+    - Physical Range -> humidity saturation is most telling
+    - Otherwise -> largest deviation; if all weak, flag as multivariate pattern.
+    """
     ft = str(row.get("predicted_fault_type", "")).lower()
-    # map fault to parameter
+    if "communication" in ft:
+        # Missing data – no single parameter, sensor offline
+        return "multivariate"
     if "frozen" in ft:
-        return "temperature"
-    if "spike" in ft:
-        # decide which param spiked most
+        # Frozen repeats identical value; if we must pick one, choose the one with longest frozen run
+        # but label as multivariate because all three are frozen in injected data
+        # For API consistency keep single param but frontend can show as multivariate pattern
         rates = {
             "temperature": abs(row.get("temperature_rate", 0) or 0),
             "humidity": abs(row.get("humidity_rate", 0) or 0),
             "pressure": abs(row.get("pressure_rate", 0) or 0),
         }
-        return max(rates, key=rates.get) if max(rates.values())>0 else "temperature"
+        devs = {
+            "temperature": abs(row.get("temperature_deviation", 0) or 0),
+            "humidity": abs(row.get("humidity_deviation", 0) or 0),
+            "pressure": abs(row.get("pressure_deviation", 0) or 0),
+        }
+        # frozen flagged even when rate small; pick largest deviation as best single indicator
+        if max(devs.values()) > 1:
+            return max(devs, key=devs.get)
+        # If still ambiguous, signal multivariate frozen
+        return "multivariate"
+    if "spike" in ft:
+        rates = {
+            "temperature": abs(row.get("temperature_rate", 0) or 0),
+            "humidity": abs(row.get("humidity_rate", 0) or 0),
+            "pressure": abs(row.get("pressure_rate", 0) or 0),
+        }
+        return max(rates, key=rates.get) if max(rates.values()) > 0 else "multivariate"
     if "physical" in ft or "saturation" in ft:
         return "humidity"
-    if "communication" in ft:
-        return "pressure"
-    # default: pick largest deviation
+    # Drift / Unusual Pattern -> multivariate or largest deviation
     devs = {
         "temperature": abs(row.get("temperature_deviation", 0) or 0),
         "humidity": abs(row.get("humidity_deviation", 0) or 0),
         "pressure": abs(row.get("pressure_deviation", 0) or 0),
     }
-    return max(devs, key=devs.get) if max(devs.values())>0 else "temperature"
+    max_dev = max(devs.values()) if devs else 0
+    # If no param deviates >1.5 sigma-equivalent, it's a combined multivariate pattern
+    if max_dev < 1.0:
+        return "multivariate"
+    return max(devs, key=devs.get) if max_dev > 0 else "multivariate"
 
 @router.get("/api/anomalies")
 def list_anomalies(station_id: str = Query(None), severity: str = Query(None), limit: int = Query(100, ge=1, le=1000)):
     df = _get_df()
+    # unwrap Query defaults when called directly (e.g., in tests) — isinstance check
+    if station_id is not None and not isinstance(station_id, str):
+        try: station_id = station_id.default  # type: ignore
+        except: station_id = None
+    if severity is not None and not isinstance(severity, str):
+        try: severity = severity.default  # type: ignore
+        except: severity = None
+    # FastAPI Query objects for limit have .default; handle int unwrap
+    if not isinstance(limit, int):
+        try: limit = int(limit.default)  # type: ignore
+        except: limit = 100
+    # total count before pagination (for frontend to show "Showing X of Y")
+    total_anomalies = int(df["is_anomaly"].sum()) if "is_anomaly" in df.columns else 0
     # filter anomalies only
     if "is_anomaly" in df.columns:
         anomalies = df[df["is_anomaly"] == True].copy()
@@ -50,43 +91,69 @@ def list_anomalies(station_id: str = Query(None), severity: str = Query(None), l
     if station_id:
         anomalies = anomalies[anomalies["station_id"] == station_id]
     # severity filter (frontend uses High/Medium/Low)
-    if severity and severity.lower() != "all":
-        # backend severities are lower-case: critical/high/medium/low
+    if severity and isinstance(severity, str) and severity.lower() != "all":
         sev_lower = severity.lower()
-        # map High -> critical/high
         if sev_lower == "high":
             anomalies = anomalies[anomalies["severity"].isin(["high", "critical"])]
         else:
             anomalies = anomalies[anomalies["severity"] == sev_lower]
 
+    filtered_total = len(anomalies)
     anomalies = anomalies.sort_values("timestamp", ascending=False).head(limit)
 
     result = []
     for idx, row in anomalies.iterrows():
         param = _param_from_fault(row)
-        # anomaly_value is the value of that param
-        val = row.get(param, row.get("temperature"))
-        # expected range: use rolling mean +- 2*std
-        mean_col = f"{param}_rolling_mean"
-        std_col = f"{param}_rolling_std"
+        # anomaly_value: for multivariate, show most deviating param's value or NaN for comm error
+        if param == "multivariate":
+            # pick largest deviation param for display value, but parameter field stays multivariate
+            devs = {
+                "temperature": abs(row.get("temperature_deviation", 0) or 0),
+                "humidity": abs(row.get("humidity_deviation", 0) or 0),
+                "pressure": abs(row.get("pressure_deviation", 0) or 0),
+            }
+            disp_param = max(devs, key=devs.get) if max(devs.values()) > 0 else "temperature"
+            val = row.get(disp_param, row.get("temperature"))
+            disp_param_for_range = disp_param
+        else:
+            val = row.get(param, row.get("temperature"))
+            disp_param_for_range = param
+        # expected range: use rolling mean +- 2*std — truthful rolling range, not invented
+        # For multivariate / frozen cases, value may be inside this univariate range but still anomalous due to temporal pattern
+        mean_col = f"{disp_param_for_range}_rolling_mean"
+        std_col = f"{disp_param_for_range}_rolling_std"
         mean_val = row.get(mean_col)
         std_val = row.get(std_col)
+        is_inside = None
         if pd.notna(mean_val) and pd.notna(std_val) and std_val not in (0, None):
             lo = round(float(mean_val - 2*std_val), 1)
             hi = round(float(mean_val + 2*std_val), 1)
-            expected_range = f"{lo}-{hi}"
+            expected_range = f"{lo} - {hi}"
+            # check if value is inside range (for UI truthfulness)
+            if pd.notna(val):
+                try:
+                    is_inside = lo <= float(val) <= hi
+                except:
+                    is_inside = None
         else:
-            # fallback static ranges
-            fallbacks = {"temperature": "15-38", "humidity": "30-85", "pressure": "990-1025", "rainfall": "0-20", "wind_speed": "0-25"}
-            expected_range = fallbacks.get(param, "N/A")
+            # No rolling stats (e.g., first rows or NaN) — use physical plausible range as fallback
+            # This is not model-derived but is a documented physical bound
+            fallbacks = {"temperature": "15 - 38", "humidity": "30 - 85", "pressure": "990 - 1025", "multivariate": "rolling - N/A"}
+            expected_range = fallbacks.get(param, fallbacks.get(disp_param_for_range, "N/A"))
         severity_title = _severity_map(row.get("severity"))
         ts = row["timestamp"].isoformat() if pd.notna(row["timestamp"]) else None
+        # Ground truth from injected dataset if present (for evaluation transparency)
+        ground_fault = row.get("fault_type", None)
+        if pd.isna(ground_fault):
+            ground_fault = None
         result.append({
             "id": f"ANO{idx:04d}",
             "station_id": row["station_id"],
             "parameter": param,
+            "display_parameter": disp_param_for_range if param == "multivariate" else param,
             "anomaly_value": round(float(val), 1) if pd.notna(val) else None,
             "expected_range": expected_range,
+            "is_inside_expected_range": is_inside,
             "severity": severity_title,
             "severity_raw": row.get("severity"),
             "timestamp": ts,
@@ -94,6 +161,7 @@ def list_anomalies(station_id: str = Query(None), severity: str = Query(None), l
             "description": row.get("explanation", "") or row.get("predicted_fault_type", ""),
             "explanation": row.get("explanation", ""),
             "predicted_fault_type": row.get("predicted_fault_type", ""),
+            "ground_truth_fault_type": ground_fault,
             "anomaly_score": float(row.get("anomaly_score", 0)) if pd.notna(row.get("anomaly_score")) else 0,
             "confidence": float(row.get("confidence", 0)) if "confidence" in row and pd.notna(row.get("confidence")) else None,
             "temperature": round(float(row.get("temperature", 0)),1) if pd.notna(row.get("temperature")) else None,
@@ -101,11 +169,19 @@ def list_anomalies(station_id: str = Query(None), severity: str = Query(None), l
             "pressure": round(float(row.get("pressure",0)),1) if pd.notna(row.get("pressure")) else None,
             "sensor_health_status": row.get("sensor_health_status", "unknown"),
         })
+    # Return with pagination metadata header via response is not available here; frontend can fetch dashboard for total
+    # For now, also expose totals in a wrapper if client checks? Keep list for backward compat, but add header via extra endpoint
     return result
 
 @router.get("/api/alerts")
 def list_alerts(severity: str = Query(None), limit: int = Query(100, ge=1, le=500)):
     # Alerts are derived from anomalies with high/medium severity
+    if severity is not None and not isinstance(severity, str):
+        try: severity = severity.default  # type: ignore
+        except: severity = None
+    if not isinstance(limit, int):
+        try: limit = int(limit.default)  # type: ignore
+        except: limit = 100
     df = _get_df()
     if "is_anomaly" in df.columns:
         anomalies = df[df["is_anomaly"] == True].copy()
@@ -122,18 +198,25 @@ def list_alerts(severity: str = Query(None), limit: int = Query(100, ge=1, le=50
         # Determine read: low severity assumed read, high unread (for demo)
         read = severity_title == "Low"
         ts = row["timestamp"].isoformat() if pd.notna(row["timestamp"]) else None
-        # Build alert message from explanation
+        # Build alert message from explanation — handle NaN for Communication Error
         expl = row.get("explanation", "") or row.get("predicted_fault_type", "Anomaly detected")
-        temp = row.get("temperature")
-        hum = row.get("humidity")
-        press = row.get("pressure")
+        def fmt(v, suffix=""):
+            if pd.isna(v):
+                return "N/A"
+            try:
+                return f"{round(float(v),1)}{suffix}"
+            except:
+                return str(v)
+        temp = fmt(row.get("temperature"), "°C")
+        hum = fmt(row.get("humidity"), "%")
+        press = fmt(row.get("pressure"), " hPa")
         if severity_title == "High":
             prefix = "CRITICAL:"
         elif severity_title == "Medium":
             prefix = "WARNING:"
         else:
             prefix = "INFO:"
-        msg = f"{prefix} {expl} at {row['station_id']} — Temp {temp}°C, Humidity {hum}%, Pressure {press} hPa."
+        msg = f"{prefix} {expl} at {row['station_id']} — Temp {temp}, Humidity {hum}, Pressure {press}."
         alerts.append({
             "id": f"ALT{idx:04d}",
             "station_id": row["station_id"],
@@ -145,12 +228,15 @@ def list_alerts(severity: str = Query(None), limit: int = Query(100, ge=1, le=50
             "timestamp": ts,
             "anomaly_score": float(row.get("anomaly_score", 0)) if pd.notna(row.get("anomaly_score")) else 0,
         })
-    if severity and severity.lower() != "all":
+    if severity and isinstance(severity, str) and severity.lower() != "all":
         alerts = [a for a in alerts if a["severity"].lower() == severity.lower()]
     return alerts
 
 @router.get("/api/anomalies/trend")
 def anomaly_trend(days: int = Query(7, ge=1, le=30)):
+    if not isinstance(days, int):
+        try: days = int(days.default)  # type: ignore
+        except: days = 7
     df = _get_df()
     if "is_anomaly" not in df.columns:
         return []
@@ -181,6 +267,9 @@ def anomaly_trend(days: int = Query(7, ge=1, le=30)):
 
 @router.get("/api/history")
 def all_history(limit: int = Query(100, ge=1, le=1000)):
+    if not isinstance(limit, int):
+        try: limit = int(limit.default)  # type: ignore
+        except: limit = 100
     df = _get_df()
     # return recent history across all stations (tail)
     recent = df.sort_values("timestamp").tail(limit)

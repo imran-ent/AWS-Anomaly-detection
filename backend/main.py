@@ -35,8 +35,9 @@ app.add_middleware(
         # Production frontend
         "https://aws-anomaly-detection-two.vercel.app",
         "https://aws-anomaly-detection-nvlljyqsw-imran-ents-projects.vercel.app",
+        "https://aws-anomaly-detection-72xs.onrender.com",
     ],
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+    allow_origin_regex=r"https://.*\.vercel\.app|http://(localhost|127\.0\.0\.1):\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -88,7 +89,41 @@ def home():
 
 @app.get("/api/health")
 def health():
-    return {"status": "healthy", "service": "METEORA Backend", "version": "2.0.0"}
+    try:
+        from services.data_service import get_active_dataset_info
+        from pathlib import Path
+        dataset_info = get_active_dataset_info()
+    except Exception as e:
+        dataset_info = {"error": str(e)}
+    # Check model file
+    from pathlib import Path as _P
+    base = _P(__file__).resolve().parent
+    model_candidates = [
+        base / "models" / "isolation_forest.joblib",
+        base / "AI_ML Anomaly Detection" / "models" / "isolation_forest.joblib",
+        base / "AI_ML Anomaly Detection" / "isolation_forest.joblib",
+    ]
+    model_found = any(p.exists() for p in model_candidates)
+    # Try pipeline status
+    pipeline_status = "unknown"
+    pipeline_error = None
+    try:
+        from routers.dashboard import _get_df
+        df = _get_df()
+        pipeline_status = "ready"
+    except Exception as e:
+        pipeline_status = "error"
+        pipeline_error = str(e)
+    return {
+        "status": "healthy" if pipeline_status == "ready" else "degraded",
+        "service": "METEORA Backend",
+        "version": "2.0.0",
+        "dataset": dataset_info,
+        "model_found": model_found,
+        "model_paths_checked": [str(p) for p in model_candidates],
+        "pipeline": pipeline_status,
+        "pipeline_error": pipeline_error,
+    }
 
 @app.get("/api/weather")
 def weather(limit: int = Query(20, ge=1, le=1000)):

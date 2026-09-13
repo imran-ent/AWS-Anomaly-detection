@@ -29,6 +29,7 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:5173",
         "aws-anomaly-detection-two.vercel.app",
+        "aws-anomaly-detection-nvlljyqsw-imran-ents-projects.vercel.app",
         "http://127.0.0.1:5174",
         "http://127.0.0.1:3000",
     ],

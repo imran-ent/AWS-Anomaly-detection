@@ -1,0 +1,152 @@
+[
+  {
+    "id": "ANO001",
+    "station_id": "AWS003",
+    "parameter": "temperature",
+    "anomaly_value": 55.2,
+    "expected_range": "25-45",
+    "severity": "High",
+    "timestamp": "2026-09-12T09:15:00",
+    "description": "Temperature exceeded safe threshold by 10.2°C"
+  },
+  {
+    "id": "ANO002",
+    "station_id": "AWS006",
+    "parameter": "rainfall",
+    "anomaly_value": 112.5,
+    "expected_range": "0-80",
+    "severity": "High",
+    "timestamp": "2026-09-12T11:45:00",
+    "description": "Extreme rainfall detected — cyclonic conditions likely"
+  },
+  {
+    "id": "ANO003",
+    "station_id": "AWS006",
+    "parameter": "wind_speed",
+    "anomaly_value": 62,
+    "expected_range": "0-45",
+    "severity": "High",
+    "timestamp": "2026-09-12T11:50:00",
+    "description": "Wind speed exceeds cyclone threshold"
+  },
+  {
+    "id": "ANO004",
+    "station_id": "AWS010",
+    "parameter": "temperature",
+    "anomaly_value": 38.9,
+    "expected_range": "28-36",
+    "severity": "Medium",
+    "timestamp": "2026-09-12T13:20:00",
+    "description": "Heatwave conditions detected above normal seasonal range"
+  },
+  {
+    "id": "ANO005",
+    "station_id": "AWS010",
+    "parameter": "humidity",
+    "anomaly_value": 28,
+    "expected_range": "40-70",
+    "severity": "Medium",
+    "timestamp": "2026-09-12T13:22:00",
+    "description": "Critically low humidity — fire risk elevated"
+  },
+  {
+    "id": "ANO006",
+    "station_id": "AWS014",
+    "parameter": "temperature",
+    "anomaly_value": 0.2,
+    "expected_range": "12-28",
+    "severity": "High",
+    "timestamp": "2026-09-12T06:30:00",
+    "description": "Sub-zero temperature anomaly for September — sensor freeze or cold snap"
+  },
+  {
+    "id": "ANO007",
+    "station_id": "AWS014",
+    "parameter": "wind_speed",
+    "anomaly_value": 41,
+    "expected_range": "5-25",
+    "severity": "Medium",
+    "timestamp": "2026-09-12T07:10:00",
+    "description": "High wind gust — possible mountain storm"
+  },
+  {
+    "id": "ANO008",
+    "station_id": "AWS003",
+    "parameter": "humidity",
+    "anomaly_value": 14,
+    "expected_range": "25-55",
+    "severity": "Medium",
+    "timestamp": "2026-09-12T09:20:00",
+    "description": "Critically dry conditions accompanying temperature spike"
+  },
+  {
+    "id": "ANO009",
+    "station_id": "AWS002",
+    "parameter": "rainfall",
+    "anomaly_value": 15.6,
+    "expected_range": "0-10",
+    "severity": "Low",
+    "timestamp": "2026-09-11T22:10:00",
+    "description": "Above-normal rainfall for the period"
+  },
+  {
+    "id": "ANO010",
+    "station_id": "AWS012",
+    "parameter": "wind_speed",
+    "anomaly_value": 28,
+    "expected_range": "5-22",
+    "severity": "Low",
+    "timestamp": "2026-09-11T18:30:00",
+    "description": "Elevated wind speed due to Bay of Bengal depression"
+  },
+  {
+    "id": "ANO011",
+    "station_id": "AWS008",
+    "parameter": "humidity",
+    "anomaly_value": 88,
+    "expected_range": "60-80",
+    "severity": "Low",
+    "timestamp": "2026-09-12T08:00:00",
+    "description": "High humidity — fog risk overnight"
+  },
+  {
+    "id": "ANO012",
+    "station_id": "AWS009",
+    "parameter": "temperature",
+    "anomaly_value": 36.8,
+    "expected_range": "28-35",
+    "severity": "Low",
+    "timestamp": "2026-09-12T14:05:00",
+    "description": "Marginally above normal temperature for September"
+  },
+  {
+    "id": "ANO013",
+    "station_id": "AWS004",
+    "parameter": "pressure",
+    "anomaly_value": 1007.8,
+    "expected_range": "1010-1018",
+    "severity": "Low",
+    "timestamp": "2026-09-12T10:45:00",
+    "description": "Slight low pressure — monitoring for development"
+  },
+  {
+    "id": "ANO014",
+    "station_id": "AWS006",
+    "parameter": "pressure",
+    "anomaly_value": 985.3,
+    "expected_range": "1000-1015",
+    "severity": "High",
+    "timestamp": "2026-09-12T12:00:00",
+    "description": "Deep low pressure consistent with cyclonic system"
+  },
+  {
+    "id": "ANO015",
+    "station_id": "AWS015",
+    "parameter": "rainfall",
+    "anomaly_value": 18.7,
+    "expected_range": "0-12",
+    "severity": "Medium",
+    "timestamp": "2026-09-12T16:30:00",
+    "description": "Heavy rainfall event — southwest monsoon active"
+  }
+]

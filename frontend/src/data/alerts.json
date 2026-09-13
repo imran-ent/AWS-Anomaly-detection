@@ -1,0 +1,110 @@
+[
+  {
+    "id": "ALT001",
+    "station_id": "AWS006",
+    "alert_message": "CRITICAL: Cyclonic conditions detected — Wind 62 km/h, Rainfall 112.5 mm/hr. Evacuate nearby personnel.",
+    "severity": "High",
+    "parameter": "wind_speed & rainfall",
+    "read": false,
+    "timestamp": "2026-09-12T11:55:00"
+  },
+  {
+    "id": "ALT002",
+    "station_id": "AWS006",
+    "alert_message": "CRITICAL: Deep low pressure 985.3 hPa recorded — cyclonic system approaching Bay of Bengal coast.",
+    "severity": "High",
+    "parameter": "pressure",
+    "read": false,
+    "timestamp": "2026-09-12T12:02:00"
+  },
+  {
+    "id": "ALT003",
+    "station_id": "AWS003",
+    "alert_message": "CRITICAL: Temperature spike 55.2°C in Jaipur. Sensor malfunction or extreme heatwave event. Immediate inspection required.",
+    "severity": "High",
+    "parameter": "temperature",
+    "read": false,
+    "timestamp": "2026-09-12T09:18:00"
+  },
+  {
+    "id": "ALT004",
+    "station_id": "AWS014",
+    "alert_message": "WARNING: Temperature dropped to 0.2°C at Dehradun in September — possible sensor freeze or sudden cold snap.",
+    "severity": "High",
+    "parameter": "temperature",
+    "read": true,
+    "timestamp": "2026-09-12T06:35:00"
+  },
+  {
+    "id": "ALT005",
+    "station_id": "AWS010",
+    "alert_message": "WARNING: Heatwave conditions at Ahmedabad. Temp 38.9°C, Humidity 28% — fire danger high.",
+    "severity": "Medium",
+    "parameter": "temperature & humidity",
+    "read": false,
+    "timestamp": "2026-09-12T13:25:00"
+  },
+  {
+    "id": "ALT006",
+    "station_id": "AWS014",
+    "alert_message": "WARNING: Wind gust 41 km/h at Dehradun. Mountain storm conditions — road alerts issued.",
+    "severity": "Medium",
+    "parameter": "wind_speed",
+    "read": true,
+    "timestamp": "2026-09-12T07:12:00"
+  },
+  {
+    "id": "ALT007",
+    "station_id": "AWS015",
+    "alert_message": "WARNING: Rainfall 18.7 mm/hr at Thiruvananthapuram. Flash flood risk in low-lying coastal areas.",
+    "severity": "Medium",
+    "parameter": "rainfall",
+    "read": false,
+    "timestamp": "2026-09-12T16:32:00"
+  },
+  {
+    "id": "ALT008",
+    "station_id": "AWS003",
+    "alert_message": "INFO: Humidity critically low at 14% in Jaipur. Combined with high temperature — extreme dehydration risk.",
+    "severity": "Medium",
+    "parameter": "humidity",
+    "read": true,
+    "timestamp": "2026-09-12T09:22:00"
+  },
+  {
+    "id": "ALT009",
+    "station_id": "AWS002",
+    "alert_message": "INFO: Rainfall above normal at Mumbai — 15.6 mm/hr. Waterlogging possible in low-lying areas.",
+    "severity": "Low",
+    "parameter": "rainfall",
+    "read": true,
+    "timestamp": "2026-09-11T22:15:00"
+  },
+  {
+    "id": "ALT010",
+    "station_id": "AWS008",
+    "alert_message": "INFO: Humidity at 88% in Guwahati. Dense fog likely overnight. Visibility alerts for roads and airports.",
+    "severity": "Low",
+    "parameter": "humidity",
+    "read": true,
+    "timestamp": "2026-09-12T08:05:00"
+  },
+  {
+    "id": "ALT011",
+    "station_id": "AWS012",
+    "alert_message": "INFO: Wind speed 28 km/h at Port Blair — Bay of Bengal depression influence. Ferry services may be disrupted.",
+    "severity": "Low",
+    "parameter": "wind_speed",
+    "read": true,
+    "timestamp": "2026-09-11T18:35:00"
+  },
+  {
+    "id": "ALT012",
+    "station_id": "AWS009",
+    "alert_message": "INFO: Temperature 36.8°C at Lucknow, marginally above seasonal average. Heat advisory for vulnerable populations.",
+    "severity": "Low",
+    "parameter": "temperature",
+    "read": true,
+    "timestamp": "2026-09-12T14:08:00"
+  }
+]

@@ -1,0 +1,36 @@
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables / Secrets
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# ML Model files (optional - ignore only if large)
+*.pkl
+*.joblib
+
+# Python build files
+build/
+dist/
+*.egg-info/cleaned_weather_data.csv

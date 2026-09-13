@@ -43,13 +43,16 @@ and missing-data cases IsolationForest structurally cannot catch well.
 ------------------------------------------------------------------------
 """
 
-import os
+from pathlib import Path
 
 import joblib
 import numpy as np
 import pandas as pd
 
-MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
+# Resolve model dir relative to this file (works on Windows D:\... and Linux /opt/render/...)
+# Canonical location is .../AI_ML Anomaly Detection/models/ ; fallback to .../AI_ML Anomaly Detection/ if needed
+_this_dir = Path(__file__).resolve().parent
+MODEL_DIR = _this_dir / "models"
 
 _iso_forest = None
 _root_cause_clf = None
@@ -57,16 +60,27 @@ _fault_encoder = None
 _feature_config = None
 
 
+def _resolve_model_dir(model_dir):
+    p = Path(model_dir)
+    # If passed dir doesn't contain model, try sibling locations
+    if not (p / "isolation_forest.joblib").exists():
+        for alt in [MODEL_DIR, _this_dir, _this_dir.parent / "models"]:
+            if (alt / "isolation_forest.joblib").exists():
+                return alt
+    return p
+
+
 def _load_models(model_dir=MODEL_DIR):
     global _iso_forest, _root_cause_clf, _fault_encoder, _feature_config
     if _iso_forest is None:
-        _iso_forest = joblib.load(os.path.join(model_dir, "isolation_forest.joblib"))
-        _feature_config = joblib.load(os.path.join(model_dir, "feature_config.joblib"))
-        rc_path = os.path.join(model_dir, "root_cause_classifier.joblib")
-        le_path = os.path.join(model_dir, "fault_label_encoder.joblib")
-        if os.path.exists(rc_path) and os.path.exists(le_path):
-            _root_cause_clf = joblib.load(rc_path)
-            _fault_encoder = joblib.load(le_path)
+        model_dir = _resolve_model_dir(model_dir)
+        _iso_forest = joblib.load(str(model_dir / "isolation_forest.joblib"))
+        _feature_config = joblib.load(str(model_dir / "feature_config.joblib"))
+        rc_path = model_dir / "root_cause_classifier.joblib"
+        le_path = model_dir / "fault_label_encoder.joblib"
+        if rc_path.exists() and le_path.exists():
+            _root_cause_clf = joblib.load(str(rc_path))
+            _fault_encoder = joblib.load(str(le_path))
 
 
 def _add_extra_signals(df):

@@ -1,31 +1,32 @@
 """
 ML Service - wraps the real anomaly_detection module (IsolationForest + rules).
 Uses models in backend/models/ (copied from AI_ML Anomaly Detection/).
+Path resolution via pathlib so it works on Windows (D:\\...) and Linux (/opt/render/...).
 """
-import os
+from pathlib import Path
 import sys
-import joblib
 import pandas as pd
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_DIR = os.path.join(BASE_DIR, "models")
-# Fallback to AI_ML folder if models not yet copied
-FALLBACK_MODEL_DIR = os.path.join(BASE_DIR, "AI_ML Anomaly Detection")
+# Base dir = backend/ (two levels up from services/ml_service.py is not, actually one: services -> backend)
+# Path(__file__).resolve().parent = .../backend/services, parent.parent = .../backend
+BASE_DIR = Path(__file__).resolve().parent.parent
+MODEL_DIR = BASE_DIR / "models"
+# AI_ML folder with space in name - handle via Path
+AML_DIR = BASE_DIR / "AI_ML Anomaly Detection"
+AML_MODELS_DIR = AML_DIR / "models"
 
 # Ensure the AI_ML module is importable
-AML_PATH = os.path.join(BASE_DIR, "AI_ML Anomaly Detection")
-if AML_PATH not in sys.path:
-    sys.path.insert(0, AML_PATH)
-
-# Prefer backend/models, fallback to AI_ML folder
-_effective_model_dir = MODEL_DIR if os.path.exists(os.path.join(MODEL_DIR, "isolation_forest.joblib")) else FALLBACK_MODEL_DIR
+if str(AML_DIR) not in sys.path:
+    sys.path.insert(0, str(AML_DIR))
 
 
-def _get_model_dir():
-    # Re-check in case files were added after import
-    if os.path.exists(os.path.join(MODEL_DIR, "isolation_forest.joblib")):
-        return MODEL_DIR
-    return FALLBACK_MODEL_DIR
+def _get_model_dir() -> Path:
+    # Prefer backend/models, then AI_ML/models, then AI_ML top-level (all contain real file)
+    for p in [MODEL_DIR, AML_MODELS_DIR, AML_DIR]:
+        if (p / "isolation_forest.joblib").exists():
+            return p
+    # Fallback to MODEL_DIR so caller gets clear FileNotFound with that path
+    return MODEL_DIR
 
 
 def detect_anomalies(df):
@@ -44,12 +45,12 @@ def detect_anomalies(df):
         from anomaly_detection import detect_anomalies as real_detect
     except ImportError as e:
         raise ImportError(
-            f"Failed to import anomaly_detection from {AML_PATH}. "
+            f"Failed to import anomaly_detection from {AML_DIR}. "
             f"Ensure isolation_forest.joblib exists. Original error: {e}"
         ) from e
 
     model_dir = _get_model_dir()
-    result_df = real_detect(df, model_dir=model_dir)
+    result_df = real_detect(df, model_dir=str(model_dir))
 
     # Backwards-compatible aliases for older router code that expects "status" / "anomaly"
     result_df["status"] = result_df["is_anomaly"].map(lambda x: "ANOMALY" if x else "NORMAL")

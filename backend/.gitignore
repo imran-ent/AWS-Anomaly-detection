@@ -26,9 +26,10 @@ Thumbs.db
 # Jupyter Notebook
 .ipynb_checkpoints/
 
-# ML Model files (optional - ignore only if large)
+# ML Model files
+# *.joblib removed so trained model can be deployed to Render
+# (models are required at runtime: isolation_forest.joblib, feature_config.joblib)
 *.pkl
-*.joblib
 
 # Python build files
 build/

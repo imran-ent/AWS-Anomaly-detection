@@ -24,14 +24,17 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        # Local development
         "http://localhost:5173",
         "http://localhost:5174",
         "http://localhost:3000",
         "http://127.0.0.1:5173",
-        "aws-anomaly-detection-two.vercel.app",
-        "aws-anomaly-detection-nvlljyqsw-imran-ents-projects.vercel.app",
         "http://127.0.0.1:5174",
         "http://127.0.0.1:3000",
+
+        # Production frontend
+        "https://aws-anomaly-detection-two.vercel.app",
+        "https://aws-anomaly-detection-nvlljyqsw-imran-ents-projects.vercel.app",
     ],
     allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
     allow_credentials=True,

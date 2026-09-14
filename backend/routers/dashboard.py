@@ -85,26 +85,64 @@ def dashboard():
     critical = int(sev_counts.get("critical", 0))
     medium = int(sev_counts.get("medium", 0))
     low = int(sev_counts.get("low", 0))
-    # system status reflects whether pipeline succeeded
+    # Consistency check: high+medium+low should == anomalies (critical counted in high)
+    # Note: severity 'critical' is subset of high, so high already includes critical
+    # So high_raw + medium + low + critical? Actually high includes critical, so check:
+    # total_anomalies = high_raw_without_critical? Use sev_counts directly
+    # For validation, compute raw sum
+    _raw_high = int(sev_counts.get("high", 0))
+    _calc_total = _raw_high + critical + medium + low if critical > 0 else _raw_high + medium + low
+    # But we treat high as including critical for display; for validation use raw counts
+    # Simpler: sum all anomaly severities should equal anomalies
+    if anomalies != sum(v for k, v in sev_counts.items() if k != "none"):
+        print(f"[METEORA] WARNING severity sum mismatch: anomalies={anomalies} severity_sum={sum(v for k,v in sev_counts.items() if k!='none')} counts={sev_counts}")
+    # Compute anomaliesToday as latest date's anomalies (single source of truth for graph)
+    anomalies_today = 0
+    latest_timestamp = None
+    try:
+        # timestamp column is datetime after preprocessing
+        latest_ts = pd.to_datetime(df["timestamp"]).max()
+        latest_timestamp = latest_ts.isoformat() if pd.notna(latest_ts) else None
+        latest_date = latest_ts.date() if pd.notna(latest_ts) else None
+        if latest_date is not None and "is_anomaly" in df.columns:
+            # anomalies on latest date only
+            date_only = pd.to_datetime(df["timestamp"]).dt.date
+            anomalies_today = int(df[(date_only == latest_date) & (df["is_anomaly"] == True)].shape[0])
+            # Also breakdown for today
+            today_slice = df[(date_only == latest_date) & (df["is_anomaly"] == True)]
+            if not today_slice.empty and "severity" in today_slice.columns:
+                t_counts = today_slice["severity"].value_counts().to_dict()
+                # log for consistency verification
+                pass
+            # Validate: latest day graph value should equal anomalies_today
+            # This will be checked by frontend via /api/anomalies/trend last entry
+        else:
+            anomalies_today = anomalies  # fallback
+    except Exception as e:
+        print(f"[METEORA] anomaliesToday calc failed: {e}")
+        anomalies_today = anomalies
+
     system_status = "Operational" if total_records > 0 else "Degraded"
-    # If active dataset has ground truth, expose it for transparency (not used for counting)
     dataset_type = meta.get("type", "unknown")
 
     return {
         "totalRecords": total_records,
         "totalStations": unique_stations,
-        "normalReadings": normal,
+        "stationsOnline": unique_stations,  # same as totalStations since all stations have data in window
+        "totalAnomalies": anomalies,
         "anomaliesDetected": anomalies,
-        "totalAnomalies": anomalies,  # canonical key for frontend clarity
+        "totalAnomaliesInWindow": anomalies,
+        "normalReadings": normal,
         "highSeverity": high,
         "criticalSeverity": critical,
         "mediumSeverity": medium,
         "lowSeverity": low,
         "severityDistribution": {"high": high, "critical": critical, "medium": medium, "low": low, "none": int(sev_counts.get("none", 0))},
-        # aliases for frontend Dashboard.jsx which expects slightly different keys
-        "anomaliesToday": anomalies,
+        "anomaliesToday": anomalies_today,
         "anomaliesInWindow": anomalies,
         "activeAlerts": high + medium,  # high+medium require attention; low is info
+        "latestTimestamp": latest_timestamp,
+        "latestDate": str(latest_date) if 'latest_date' in locals() and latest_date else None,
         "systemStatus": system_status,
         "dataset": dataset_type,
         "datasetMeta": meta,

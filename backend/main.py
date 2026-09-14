@@ -177,18 +177,43 @@ def anomalies_legacy(limit: int = Query(50, ge=1, le=500)):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-# Startup warm-up: pre-compute ML cache so first concurrent frontend requests don't all block on cold 3-4s compute
-# Without this, 4 parallel fetches (dashboard+stations+alerts+trend) would queue on _CACHE_LOCK and timeout.
+# Startup warm-up with detailed logging for Render/local
 @app.on_event("startup")
 def warm_cache():
     def _warm():
         try:
+            print("[METEORA] Loading dataset...")
+            from services.data_service import get_active_dataset_info
+            info = get_active_dataset_info()
+            print(f"[METEORA] Dataset loaded successfully: {info.get('active_path')} type={info.get('type')}")
+            print("[METEORA] Loading preprocessing pipeline...")
+            print("[METEORA] Loading ML model...")
+            from pathlib import Path
+            base = Path(__file__).resolve().parent
+            candidates = [
+                base / "models" / "isolation_forest.joblib",
+                base / "AI_ML Anomaly Detection" / "models" / "isolation_forest.joblib",
+                base / "AI_ML Anomaly Detection" / "isolation_forest.joblib",
+            ]
+            found = None
+            for p in candidates:
+                if p.exists():
+                    found = p
+                    break
+            if found:
+                print(f"[METEORA] Model found at {found}")
+            else:
+                print(f"[METEORA] Model NOT found. Checked: {[str(p) for p in candidates]}")
+            print("[METEORA] Running detection pipeline (this may take 3-5s)...")
             from routers.dashboard import _get_df
-            _get_df()
+            df = _get_df()
+            print(f"[METEORA] Model loaded successfully")
+            print(f"[METEORA] Detection pipeline ready: {len(df)} records, {int(df['is_anomaly'].sum())} anomalies, {df['station_id'].nunique()} stations")
             print("[METEORA] cache warmed successfully")
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             print(f"[METEORA] cache warm failed: {e}")
-    # Run in daemon thread so startup doesn't block (uvicorn startup must return quickly)
     threading.Thread(target=_warm, daemon=True).start()
 
 # Include routers (dashboard, stations, anomalies, manual)

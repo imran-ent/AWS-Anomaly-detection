@@ -29,6 +29,15 @@ const PARAMETER_LABELS = {
   multivariate: 'Multivariate Pattern',
 };
 
+const DETECTION_LABELS = {
+  UNIVARIATE: 'Univariate',
+  MULTIVARIATE: 'Multivariate',
+  SENSOR_STUCK: 'Sensor Stuck',
+  COMMUNICATION: 'Comm Error',
+  PHYSICAL_RANGE: 'Physical Range',
+  NORMAL: 'Normal',
+};
+
 const SEVERITY_ORDER = { High: 0, Medium: 1, Low: 2 };
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -248,8 +257,11 @@ export default function AnomalyMonitoring() {
                       <th>Station ID</th>
                       <th>Parameter</th>
                       <th>Anomaly Value</th>
-                      <th>Expected Range <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, color: 'var(--text-muted)' }}>(rolling mean ±2σ)</span></th>
+                      <th>Expected Range <span style={{ fontWeight: 400, textTransform: 'none', fontSize: 10, color: 'var(--text-muted)' }}>(rolling ±2σ or N/A)</span></th>
+                      <th>Detection Type</th>
                       <th>Severity</th>
+                      <th>GT</th>
+                      <th>ML</th>
                       <th>
                         <div className="flex-row" style={{ gap: 5 }}>
                           <Clock size={11} />
@@ -260,7 +272,9 @@ export default function AnomalyMonitoring() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((anomaly, i) => (
+                    {filtered.map((anomaly, i) => {
+                      const isMultivariate = anomaly.detection_type === 'MULTIVARIATE' || anomaly.parameter === 'multivariate' || anomaly.detection_type === 'SENSOR_STUCK' || anomaly.detection_type === 'COMMUNICATION';
+                      return (
                       <motion.tr
                         key={anomaly.id}
                         className={rowClass(anomaly.severity)}
@@ -285,51 +299,70 @@ export default function AnomalyMonitoring() {
                               color: 'var(--text-primary)',
                               textTransform: 'capitalize',
                             }}
-                            title={anomaly.parameter === 'multivariate' ? 'Multivariate weather pattern — anomaly from combined features/temporal pattern' : ''}
+                            title={isMultivariate ? 'Multivariate: individual values may be normal but combined pattern is unusual (IsolationForest)' : 'Univariate: single parameter outside its expected rolling range'}
                           >
                             {PARAMETER_LABELS[anomaly.parameter] || anomaly.parameter}
-                            {anomaly.parameter === 'multivariate' && <span style={{ fontSize: 10, color: 'var(--text-muted)' }}> (pattern)</span>}
+                            {isMultivariate && <span style={{ fontSize: 10, color: 'var(--text-muted)' }}> (pattern)</span>}
                           </span>
-                          {anomaly.ground_truth_fault_type && (
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>GT: {anomaly.ground_truth_fault_type}</div>
-                          )}
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>score {anomaly.anomaly_score}</div>
                         </td>
                         <td>
-                          <span
-                            style={{
-                              fontWeight: 800,
-                              fontSize: 15,
-                              color:
-                                anomaly.anomaly_value == null
-                                  ? 'var(--text-muted)'
-                                  : anomaly.severity === 'High'
-                                  ? 'var(--status-high)'
-                                  : anomaly.severity === 'Medium'
-                                  ? 'var(--status-medium)'
-                                  : 'var(--status-low)',
-                            }}
-                          >
-                            {anomaly.anomaly_value ?? 'N/A'}
-                          </span>
-                          {anomaly.anomaly_score != null && (
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>score {anomaly.anomaly_score}</div>
+                          {isMultivariate ? (
+                            <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--text-muted)' }}>N/A</span>
+                          ) : (
+                            <span
+                              style={{
+                                fontWeight: 800,
+                                fontSize: 15,
+                                color:
+                                  anomaly.severity === 'High'
+                                    ? 'var(--status-high)'
+                                    : anomaly.severity === 'Medium'
+                                    ? 'var(--status-medium)'
+                                    : 'var(--status-low)',
+                              }}
+                            >
+                              {anomaly.anomaly_value}
+                            </span>
                           )}
                         </td>
                         <td>
                           <span
                             style={{
                               fontSize: 12,
-                              color: anomaly.is_inside_expected_range ? '#f97316' : 'var(--text-secondary)',
+                              color: isMultivariate ? 'var(--text-muted)' : 'var(--text-secondary)',
                               fontFamily: 'monospace',
+                              fontStyle: isMultivariate ? 'italic' : 'normal',
                             }}
-                            title={anomaly.is_inside_expected_range ? 'Value is inside univariate rolling range — anomaly is multivariate/temporal (frozen sensor, pattern)' : 'Value outside rolling expected range'}
+                            title={isMultivariate ? 'Multivariate detection — no single expected range; anomaly is combined pattern' : 'Rolling mean ±2σ per station (window 5)'}
                           >
                             {anomaly.expected_range}
-                            {anomaly.is_inside_expected_range && <span style={{ fontSize: 10 }}> *</span>}
                           </span>
                         </td>
                         <td>
+                          <span className={`badge ${isMultivariate ? 'badge-medium' : 'badge-high'}`} style={{ fontSize: 10, textTransform: 'uppercase' }}>
+                            {DETECTION_LABELS[anomaly.detection_type] || anomaly.detection_type || '—'}
+                          </span>
+                          {anomaly.detection_type === 'UNIVARIATE' && anomaly.univariate_param && (
+                            <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>{anomaly.univariate_param}</div>
+                          )}
+                        </td>
+                        <td>
                           <SeverityBadge severity={anomaly.severity} />
+                        </td>
+                        <td>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: anomaly.ground_truth_label === 'Anomaly' ? 'var(--status-high)' : anomaly.ground_truth_label === 'Normal' ? 'var(--status-normal)' : 'var(--text-muted)' }}>
+                            {anomaly.ground_truth_label || 'N/A'}
+                          </span>
+                          {anomaly.ground_truth_fault_type && anomaly.ground_truth_fault_type !== 'Normal' && (
+                            <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>{anomaly.ground_truth_fault_type}</div>
+                          )}
+                        </td>
+                        <td>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: anomaly.ml_label === 'Anomaly' ? 'var(--status-high)' : 'var(--status-normal)' }}>
+                            {anomaly.ml_label || (anomaly.ml_is_anomaly ? 'Anomaly' : 'Normal')}
+                          </span>
+                          <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>{anomaly.predicted_fault_type}</div>
                         </td>
                         <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>
                           {formatTime(anomaly.timestamp)}
@@ -344,15 +377,14 @@ export default function AnomalyMonitoring() {
                           {anomaly.description}
                         </td>
                       </motion.tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             </motion.div>
             <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-              <span style={{ color: '#f97316' }}>*</span> Value inside rolling expected range — flagged by ML due to multivariate/temporal pattern (e.g., frozen sensor repeating value, inconsistent multi-parameter combination). Expected range = rolling mean ± 2σ (window 5) from <code>features.py:create_features()</code>, truthful per-station rolling stats. For <code>multivariate</code> parameter, the displayed value is the most deviating parameter but the anomaly is combination-based. Communication Error shows N/A.
-              <br />
-              Severity derived from ML <code>anomaly_score</code>: High ≥0.75 (Critical ≥0.9), Medium ≥0.55, Low otherwise. Forced deterministic anomalies (frozen/missing) floored at 0.85 → High.
+              <strong>Univariate</strong>: single parameter outside its rolling expected range (mean ±2σ, window 5 per station). Shows exact param, value, and its range. <strong>Multivariate / Sensor Stuck / Comm Error</strong>: individual values may be normal but combined pattern is unusual (IsolationForest + deterministic rules). Shows <code>N/A — Multivariate Detection</code>, no misleading single-param range. GT = injected dataset label (<code>anomaly</code>/<code>fault_type</code>), ML = model prediction. Severity from <code>anomaly_score</code>: High ≥0.88 or forced, Medium ≥0.80, Low otherwise.
             </div>
           </>
         )}

@@ -645,6 +645,43 @@ export default function ManualCheck() {
           </div>
         </div>
 
+        {/* System Explanation Section - for SIH judge presentation */}
+        <motion.div
+          className="card"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.32 }}
+          style={{ marginTop: 20 }}
+        >
+          <div className="card-header">
+            <div className="card-title">
+              <Activity size={16} color="var(--accent-cyan)" />
+              How METEORA Detects Anomalies
+            </div>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>End-to-end ML pipeline — single source of truth</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+            {[
+              { step: 1, title: 'Weather data collected', desc: '29 AWS stations, hourly Temp/Humidity/Pressure (+ synthetic Rainfall/Wind). Injected anomaly dataset (5% Spike/Drift/Frozen/Comm Error) is the demo source.' },
+              { step: 2, title: 'Cleaned & preprocessed', desc: 'preprocess_data(): column normalization, timestamp parsing, missing/physical-range flags, z-score scaling. Same function for all routes.' },
+              { step: 3, title: 'Features generated', desc: 'create_features(): hour/day, rates, rolling mean/std (window 5), deviation, abs_change, temp/humidity ratio. + frozen_run_length & consistency flags.' },
+              { step: 4, title: 'Compared to history', desc: 'IsolationForest trained on normal behavior (contamination 0.02). Decision_function per-batch normalized; deterministic overrides for frozen/missing.' },
+              { step: 5, title: 'IsolationForest predicts', desc: 'predict == -1 => anomaly. anomaly_score 0-1 (higher = more anomalous). Confidence & sensor_health_status (rolling 50).' },
+              { step: 6, title: 'Severity from score', desc: 'Forced (frozen/missing) => HIGH/CRITICAL. Statistical => High ≥0.88, Medium ≥0.80, Low else. Ensures High/Medium/Low visible.' },
+              { step: 7, title: 'Explains the reason', desc: 'Ranks engineered features by |value|, maps to readable reason. Expected range = rolling mean ±2σ per station. Multivariate flagged when no single param is out-of-range.' },
+            ].map((s) => (
+              <div key={s.step} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--accent-cyan)', letterSpacing: '0.06em' }}>STEP {s.step}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>{s.title}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 6, lineHeight: 1.5 }}>{s.desc}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 12, lineHeight: 1.6 }}>
+            Data flow: RAW CSV (weather_data1.csv) → preprocess_data() → create_features() → detect_anomalies(IsolationForest) → centralized cache (_get_df) → API (/api/dashboard, /api/stations, /api/anomalies) → Frontend. Any change to this pipeline invalidates cache (5 min TTL).
+          </div>
+        </motion.div>
+
         <style>{`@media (max-width: 900px) { .manual-grid { grid-template-columns: 1fr !important; } }`}</style>
       </div>
     </>

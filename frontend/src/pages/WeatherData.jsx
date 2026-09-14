@@ -9,6 +9,7 @@ import {
   Clock,
   MapPin,
   ChevronRight,
+  Gauge,
 } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import { StatusBadge, formatTime } from '../components/Badges';
@@ -24,6 +25,7 @@ const rowVariants = {
 };
 
 function TempCell({ value }) {
+  if (value == null) return <span style={{ color: 'var(--text-muted)' }}>N/A</span>;
   const color =
     value > 45
       ? 'var(--status-high)'
@@ -33,20 +35,28 @@ function TempCell({ value }) {
       ? 'var(--status-medium)'
       : 'var(--text-primary)';
   return (
-    <span style={{ color, fontWeight: value > 45 || value < 5 ? 700 : 400 }}>
+    <span style={{ color, fontWeight: value > 45 || value < 5 ? 700 : 400 }} title="Value-level coloring (not ML status)">
       {value}°C
     </span>
   );
 }
 
 function WindCell({ value }) {
+  if (value == null) return <span style={{ color: 'var(--text-muted)' }}>N/A</span>;
   const color = value > 50 ? 'var(--status-high)' : value > 35 ? 'var(--status-medium)' : 'var(--text-primary)';
-  return <span style={{ color, fontWeight: value > 50 ? 700 : 400 }}>{value} km/h</span>;
+  return <span style={{ color, fontWeight: value > 50 ? 700 : 400 }} title="Value-level coloring (not ML status)">{value} km/h</span>;
 }
 
 function RainfallCell({ value }) {
+  if (value == null) return <span style={{ color: 'var(--text-muted)' }}>N/A</span>;
   const color = value > 100 ? 'var(--status-high)' : value > 50 ? 'var(--status-medium)' : 'var(--text-primary)';
   return <span style={{ color, fontWeight: value > 100 ? 700 : 400 }}>{value} mm</span>;
+}
+
+function PressureCell({ value }) {
+  if (value == null) return <span style={{ color: 'var(--text-muted)' }}>N/A</span>;
+  const color = value < 990 || value > 1030 ? 'var(--status-high)' : value < 995 || value > 1025 ? 'var(--status-medium)' : 'var(--text-primary)';
+  return <span style={{ color, fontWeight: value < 990 || value > 1030 ? 700 : 400 }}>{value} hPa</span>;
 }
 
 export default function WeatherData() {
@@ -159,6 +169,12 @@ export default function WeatherData() {
                         Wind
                       </div>
                     </th>
+                    <th>
+                      <div className="flex-row" style={{ gap: 5 }}>
+                        <Gauge size={11} />
+                        Pressure
+                      </div>
+                    </th>
                     <th>Status</th>
                     <th>
                       <div className="flex-row" style={{ gap: 5 }}>
@@ -198,26 +214,34 @@ export default function WeatherData() {
                           <TempCell value={station.temperature} />
                         </td>
                         <td>
-                          <span
-                            style={{
-                              color:
-                                station.humidity < 20
-                                  ? 'var(--status-high)'
-                                  : station.humidity > 90
-                                  ? 'var(--status-medium)'
-                                  : 'var(--text-primary)',
-                              fontWeight:
-                                station.humidity < 20 || station.humidity > 90 ? 700 : 400,
-                            }}
-                          >
-                            {station.humidity}%
-                          </span>
+                          {station.humidity == null ? (
+                            <span style={{ color: 'var(--text-muted)' }}>N/A</span>
+                          ) : (
+                            <span
+                              style={{
+                                color:
+                                  station.humidity < 20
+                                    ? 'var(--status-high)'
+                                    : station.humidity > 90
+                                    ? 'var(--status-medium)'
+                                    : 'var(--text-primary)',
+                                fontWeight:
+                                  station.humidity < 20 || station.humidity > 90 ? 700 : 400,
+                              }}
+                              title="Humidity value-level coloring (high humidity ≠ ML anomaly; see Status badge for ML verdict)"
+                            >
+                              {station.humidity}%
+                            </span>
+                          )}
                         </td>
                         <td>
                           <RainfallCell value={station.rainfall} />
                         </td>
                         <td>
                           <WindCell value={station.wind_speed} />
+                        </td>
+                        <td>
+                          <PressureCell value={station.pressure} />
                         </td>
                         <td>
                           <StatusBadge anomalyStatus={station.anomaly_status} />
@@ -246,19 +270,26 @@ export default function WeatherData() {
             flexWrap: 'wrap',
             fontSize: 11,
             color: 'var(--text-muted)',
+            lineHeight: 1.6,
           }}
         >
           <span>
             <span style={{ color: 'var(--status-high)' }}>■</span> Red border/highlight
-            = anomalous reading
+            = ML model flagged <strong>ANOMALY</strong> (multivariate pattern)
           </span>
           <span>
             <span style={{ color: 'var(--status-high)' }}>■</span> Red value =
-            exceeds safe threshold
+            value-level high/low (not ML verdict)
           </span>
           <span>
             <span style={{ color: 'var(--status-medium)' }}>■</span> Orange value =
-            approaching threshold
+            approaching value-level threshold (not ML verdict)
+          </span>
+          <span style={{ color: 'var(--text-muted)' }}>
+            Humidity 93% orange ≠ HIGH anomaly — Status badge shows ML verdict. Value coloring is univariate threshold, anomaly is multivariate ML.
+          </span>
+          <span>
+            <span style={{ color: 'var(--status-medium)' }}>■</span> Pressure shown from dataset (990-1025 hPa typical)
           </span>
         </div>
       </div>

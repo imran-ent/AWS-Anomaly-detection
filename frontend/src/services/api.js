@@ -16,14 +16,20 @@ export const BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env &
   ? import.meta.env.VITE_API_URL.replace(/\/$/, '')
   : 'http://127.0.0.1:8000';
 
+// Mock mode: controlled by env. Production MUST NOT silently use mock.
+// Set VITE_USE_MOCK_DATA=true for offline demo, false for production (shows Backend unavailable error)
+const USE_MOCK = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_USE_MOCK_DATA)
+  ? String(import.meta.env.VITE_USE_MOCK_DATA).toLowerCase() === 'true'
+  : true; // default true for local dev convenience, but UI clearly shows DEMO badge
+
 // Global flag for UI to detect mock usage
 export let lastFetchWasMock = false;
 export function isMockMode() { return lastFetchWasMock; }
 
 // Helper: fetch with explicit fallback labeling
 // - If fetch succeeds, returns real data
-// - If fetch fails and allowMock=true, returns mock data marked with _isMock flag and logs DEMO DATA warning
-// - If fetch fails and allowMock=false, throws so caller can show error state
+// - If fetch fails and allowMock=true AND USE_MOCK=true, returns mock data marked with _isMock flag
+// - Otherwise throws so caller can show "Backend connection unavailable" error (production behavior)
 async function fetchWithFallback(url, fallbackFn, { allowMock = true, label = 'data' } = {}) {
   try {
     const res = await fetch(url);
@@ -33,16 +39,16 @@ async function fetchWithFallback(url, fallbackFn, { allowMock = true, label = 'd
     return data;
   } catch (e) {
     console.warn(`Backend fetch failed for ${url}: ${e.message}`);
-    if (!allowMock) {
+    const mockAllowed = allowMock && USE_MOCK;
+    if (!mockAllowed) {
       lastFetchWasMock = false;
+      // Production: do not hide failure with fake data
       throw e;
     }
-    console.warn(`[METEORA] Using DEMO/MOCK fallback for ${label} — data is NOT real. Backend unavailable.`);
+    console.warn(`[METEORA] Using DEMO/MOCK fallback for ${label} — data is NOT real. Backend unavailable. Set VITE_USE_MOCK_DATA=false to disable mock in production.`);
     lastFetchWasMock = true;
     const mock = await fallbackFn();
-    // Tag mock so UI can show DEMO badge instead of pretending it's live
     if (Array.isArray(mock)) {
-      // attach non-enumerable? but enumerable for check
       mock._isMock = true;
     } else if (mock && typeof mock === 'object') {
       mock._isMock = true;
@@ -162,15 +168,44 @@ export async function getManualStations() {
 }
 
 export async function manualSensorCheck({ station_id, temperature, humidity, pressure }) {
-  const res = await fetch(`${BASE_URL}/api/manual-check`, {
+  // Try canonical /api/manual-check first, fallback to /api/predict per spec
+  const tryFetch = async (url) => {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ station_id, temperature, humidity, pressure }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const msg = data.detail || data.error || data.message || `Manual check failed: ${res.status}`;
+      throw new Error(msg);
+    }
+    return data;
+  };
+  try {
+    return await tryFetch(`${BASE_URL}/api/manual-check`);
+  } catch (e) {
+    // If manual-check 404, try /api/predict spec endpoint
+    if (String(e.message).includes('404') || String(e.message).includes('Not Found')) {
+      return await tryFetch(`${BASE_URL}/api/predict`);
+    }
+    throw e;
+  }
+}
+
+// Spec-required POST /api/predict (with rainfall/wind optional) — direct access
+export async function predictSensor({ station_id, temperature, humidity, pressure, rainfall, wind_speed }) {
+  const body = { station_id, temperature, humidity, pressure };
+  if (rainfall != null) body.rainfall = rainfall;
+  if (wind_speed != null) body.wind_speed = wind_speed;
+  const res = await fetch(`${BASE_URL}/api/predict`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ station_id, temperature, humidity, pressure }),
+    body: JSON.stringify(body),
   });
   const data = await res.json();
   if (!res.ok) {
-    // backend returns {detail: "Unsupported Station ID..."} or {success:false, error:...}
-    const msg = data.detail || data.error || `Manual check failed: ${res.status}`;
+    const msg = data.detail || data.error || `Predict failed: ${res.status}`;
     throw new Error(msg);
   }
   return data;

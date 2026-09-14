@@ -260,6 +260,8 @@ def _run_manual_check(payload: ManualCheckRequest):
             if pd.isna(v):
                 suggested[k] = None
 
+    detection_type = row.get("detection_type", "UNKNOWN")
+    univariate_param = row.get("univariate_param", None)
     return {
         "success": True,
         "station_id": station_id,
@@ -279,6 +281,8 @@ def _run_manual_check(payload: ManualCheckRequest):
             "explanation": explanation,
             "suggested_correction": suggested,
             "sensor_health_status": row.get("sensor_health_status", "unknown"),
+            "detection_type": detection_type,
+            "univariate_param": univariate_param,
         },
         "meta": {
             "dataset_type": "injected" if "anomaly" in combined_raw.columns else "clean",
@@ -300,3 +304,91 @@ def manual_check(payload: ManualCheckRequest):
 def manual_check_alias(payload: ManualCheckRequest):
     """Alias for convenience."""
     return _run_manual_check(payload)
+
+
+# Spec-required endpoint: POST /api/predict
+# Accepts extended sensor payload (station_id, temperature, humidity, rainfall, wind_speed, pressure)
+# Frontend only sends temp/hum/pressure; rainfall/wind are optional and ignored for model (model uses 3 core sensors)
+class PredictRequest(BaseModel):
+    station_id: str = Field(..., description="Station ID, e.g. AWS001")
+    temperature: float = Field(..., description="Temperature in C")
+    humidity: float = Field(..., description="Humidity in %")
+    pressure: float = Field(..., description="Pressure in hPa")
+    rainfall: float = Field(None, description="Optional rainfall mm - not used by model")
+    wind_speed: float = Field(None, description="Optional wind speed - not used by model")
+    timestamp: str = Field(None, description="Optional timestamp - currently ignored, uses now()")
+
+@router.post("/api/predict")
+def predict(req: PredictRequest):
+    """POST /api/predict - spec endpoint. Delegates to same pipeline.
+    Extended fields rainfall/wind_speed/timestamp are accepted but not required for model.
+    Returns spec-compatible response with station_supported, is_anomaly, severity, expected_ranges, etc.
+    """
+    # Reuse manual logic; rainfall/wind are ignored for model since dataset model uses temp/hum/pressure
+    payload = ManualCheckRequest(station_id=req.station_id, temperature=req.temperature, humidity=req.humidity, pressure=req.pressure)
+    result = _run_manual_check(payload)
+    # Adapt to spec response shape
+    pred = result["prediction"]
+    # Compute expected ranges via station history (same as anomaly_service truthful ranges)
+    # Use rolling stats from pipeline tail for truthful comparison
+    try:
+        from routers.dashboard import _get_df
+        df = _get_df()
+        station_slice = df[df["station_id"] == req.station_id]
+        if not station_slice.empty:
+            last = station_slice.sort_values("timestamp").iloc[-1]
+            # expected ranges as mean +-2*std per param
+            def _range(param):
+                m = last.get(f"{param}_rolling_mean")
+                s = last.get(f"{param}_rolling_std")
+                if pd.notna(m) and pd.notna(s) and s not in (0, None):
+                    lo = round(float(m - 2*s), 1)
+                    hi = round(float(m + 2*s), 1)
+                    return f"{lo} - {hi}", lo, hi
+                fall = {"temperature": "15 - 38", "humidity": "30 - 85", "pressure": "990 - 1025"}
+                return fall.get(param, "N/A"), None, None
+            exp_ranges = {}
+            anomalous_features = []
+            for p in ["temperature", "humidity", "pressure"]:
+                rng_str, lo, hi = _range(p)
+                exp_ranges[p] = rng_str
+                val = float(getattr(req, p))
+                if lo is not None and hi is not None:
+                    if not (lo <= val <= hi):
+                        anomalous_features.append(p)
+            # If multivariate fallback and no single param outside, but model says anomaly, mark multivariate
+            if not anomalous_features and pred["is_anomaly"]:
+                # check deviation magnitude
+                devs = {}
+                for p in ["temperature", "humidity", "pressure"]:
+                    devs[p] = abs(last.get(f"{p}_deviation", 0) or 0)
+                if max(devs.values(), default=0) < 1.0:
+                    anomalous_features = ["multivariate"]
+                else:
+                    anomalous_features = [max(devs, key=devs.get)]
+        else:
+            exp_ranges = {"temperature": "15 - 38", "humidity": "30 - 85", "pressure": "990 - 1025"}
+            anomalous_features = []
+    except Exception:
+        exp_ranges = {"temperature": "15 - 38", "humidity": "30 - 85", "pressure": "990 - 1025"}
+        anomalous_features = []
+
+    return {
+        "station_id": result["station_id"],
+        "station_supported": True,
+        "city": result["city"],
+        "prediction": pred["status"],
+        "is_anomaly": pred["is_anomaly"],
+        "severity": pred["severity"].upper() if isinstance(pred["severity"], str) else pred["severity"],
+        "severity_raw": pred["severity"],
+        "anomaly_score": pred["anomaly_score"],
+        "confidence": pred["confidence"],
+        "values": result["input"],
+        "expected_ranges": exp_ranges,
+        "anomalous_features": anomalous_features,
+        "reason": pred["explanation"],
+        "explanation": pred["explanation"],
+        "predicted_fault_type": pred["predicted_fault_type"],
+        # keep full result for transparency
+        "full_result": result,
+    }

@@ -95,15 +95,41 @@ def get_station(station_id: str):
     }
 
 @router.get("/api/stations/{station_id}/history")
-def station_history(station_id: str, hours: int = Query(24, ge=1, le=720)):
+def station_history(station_id: str, hours: int = Query(24, ge=1, le=720), parameter: str = Query("temperature", description="Primary param for expected bounds: temperature|humidity|pressure")):
     df = _get_df()
     sub = df[df["station_id"] == station_id]
     if sub.empty:
         raise HTTPException(status_code=404, detail=f"Station {station_id} not found")
     # take last N rows; hours corresponds to rows since hourly data
     sub_sorted = sub.sort_values("timestamp").tail(hours)
+    # Validate parameter
+    if parameter not in ("temperature","humidity","pressure"):
+        parameter = "temperature"
     history = []
     for _, row in sub_sorted.iterrows():
+        # Expected/baseline values per param (rolling mean ±2σ)
+        expected = {}
+        lower = {}
+        upper = {}
+        for p in ["temperature","humidity","pressure"]:
+            m = row.get(f"{p}_rolling_mean")
+            s = row.get(f"{p}_rolling_std")
+            if pd.notna(m) and pd.notna(s) and s not in (0, None):
+                lo = round(float(m - 2*s), 1)
+                hi = round(float(m + 2*s), 1)
+                exp = round(float(m), 1)
+                expected[p] = exp
+                lower[p] = lo
+                upper[p] = hi
+            else:
+                expected[p] = None
+                lower[p] = None
+                upper[p] = None
+        # Primary param bounds for chart convenience
+        primary_expected = expected.get(parameter)
+        primary_lower = lower.get(parameter)
+        primary_upper = upper.get(parameter)
+        primary_value = row.get(parameter)
         history.append({
             "time": row["timestamp"].isoformat() if pd.notna(row["timestamp"]) else None,
             "timestamp": row["timestamp"].isoformat() if pd.notna(row["timestamp"]) else None,
@@ -112,8 +138,19 @@ def station_history(station_id: str, hours: int = Query(24, ge=1, le=720)):
             "pressure": round(float(row.get("pressure", 0)), 1) if pd.notna(row.get("pressure")) else None,
             "rainfall": synth_rainfall(row),
             "wind_speed": synth_wind(row),
+            # Expected / bounds per spec Phase 4 & 8
+            "expected": primary_expected,
+            "lower": primary_lower,
+            "upper": primary_upper,
+            "expected_by_param": expected,
+            "lower_by_param": lower,
+            "upper_by_param": upper,
+            "actual": round(float(primary_value),1) if pd.notna(primary_value) else None,
             "is_anomaly": bool(row.get("is_anomaly", False)),
             "severity": row.get("severity", "none"),
             "anomaly_score": float(row.get("anomaly_score", 0)) if pd.notna(row.get("anomaly_score")) else 0,
+            "detection_type": str(row.get("detection_type","NORMAL")),
+            "explanation": str(row.get("explanation","")) if pd.notna(row.get("explanation")) else "",
+            "predicted_fault_type": str(row.get("predicted_fault_type","Normal")),
         })
     return history

@@ -37,9 +37,13 @@ def detect_anomalies(df):
                predicted_fault_type, explanation, suggested_correction,
                sensor_health_status
     Input must be feature-engineered (output of create_features).
+
+    CRITICAL: Preserves injected ground-truth columns as ground_truth_anomaly /
+    ground_truth_fault_type so evaluation is not lost. Legacy 'anomaly' alias
+    now only created if no GT exists; otherwise GT is preserved under new names.
     Adds backwards-compatible aliases:
     - df["status"] = "ANOMALY"/"NORMAL"
-    - df["anomaly"] = 1/0  (for legacy dashboard code)
+    - df["anomaly"] = 1/0 ONLY if no GT column exists (otherwise GT preserved)
     """
     try:
         from anomaly_detection import detect_anomalies as real_detect
@@ -49,11 +53,33 @@ def detect_anomalies(df):
             f"Ensure isolation_forest.joblib exists. Original error: {e}"
         ) from e
 
+    # Preserve GT before detection mutates (detect adds extra signals but keeps columns)
+    has_gt_anomaly = "anomaly" in df.columns
+    has_gt_fault = "fault_type" in df.columns
+    gt_anomaly_series = df["anomaly"].copy() if has_gt_anomaly else None
+    gt_fault_series = df["fault_type"].copy() if has_gt_fault else None
+
     model_dir = _get_model_dir()
     result_df = real_detect(df, model_dir=str(model_dir))
 
-    # Backwards-compatible aliases for older router code that expects "status" / "anomaly"
+    # Preserve GT under explicit names (source of truth for evaluation)
+    if has_gt_anomaly and gt_anomaly_series is not None:
+        result_df["ground_truth_anomaly"] = gt_anomaly_series.values
+        result_df["ground_truth_label"] = gt_anomaly_series.map(lambda x: "Anomaly" if int(x)==1 else "Normal" if pd.notna(x) else "Unknown")
+        # Also keep 'anomaly' as GT for backward compat with evaluation code that expects GT there
+        # AND keep 'ml_anomaly' as prediction
+        result_df["anomaly"] = gt_anomaly_series.values  # GT stays in 'anomaly' for transparency
+        result_df["ml_is_anomaly"] = result_df["is_anomaly"]
+        result_df["ml_anomaly"] = result_df["is_anomaly"].astype(int)
+    else:
+        # No GT present -> create legacy alias from prediction (live data mode)
+        result_df["anomaly"] = result_df["is_anomaly"].astype(int)
+
+    if has_gt_fault and gt_fault_series is not None:
+        result_df["ground_truth_fault_type"] = gt_fault_series.values
+        # predicted_fault_type already is ML prediction
+
+    # Status alias (NORMAL/ANOMALY) always is ML prediction
     result_df["status"] = result_df["is_anomaly"].map(lambda x: "ANOMALY" if x else "NORMAL")
-    result_df["anomaly"] = result_df["is_anomaly"].astype(int)
 
     return result_df

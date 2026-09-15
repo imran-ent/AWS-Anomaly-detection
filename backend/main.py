@@ -13,6 +13,7 @@ from routers.dashboard import router as dashboard_router
 from routers.stations import router as stations_router
 from routers.anomalies import router as anomalies_router
 from routers.manual import router as manual_router
+from routers.meta import router as meta_router
 
 app = FastAPI(
     title="METEORA API",
@@ -216,8 +217,9 @@ def warm_cache():
             print(f"[METEORA] cache warm failed: {e}")
     threading.Thread(target=_warm, daemon=True).start()
 
-# Include routers (dashboard, stations, anomalies, manual)
+# Include routers (dashboard, stations, anomalies, manual, meta)
 app.include_router(dashboard_router)
 app.include_router(stations_router)
 app.include_router(anomalies_router)
 app.include_router(manual_router)
+app.include_router(meta_router)

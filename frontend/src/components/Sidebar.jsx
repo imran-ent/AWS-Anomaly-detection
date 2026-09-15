@@ -14,7 +14,7 @@ import { getDashboardSummary, getAnomalies } from '../services/api';
 
 const baseNav = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { to: '/weather', label: 'Live Weather Data', icon: CloudRain },
+  { to: '/weather', label: 'Weather Data (Historical)', icon: CloudRain },
   { to: '/anomalies', label: 'Anomaly Monitoring', icon: AlertTriangle },
   { to: '/alerts', label: 'Alerts', icon: Bell },
   { to: '/manual-check', label: 'Manual Sensor Check', icon: FlaskConical },
@@ -145,16 +145,16 @@ export default function Sidebar() {
       {/* Footer — truthful demo label */}
       <div className="sidebar-footer">
         {isMock ? (
-          <div className="demo-badge" title="Backend unavailable — showing demo data">
-            <span className="demo-dot" style={{ background: '#f97316' }} />
-            DEMO DATA · BACKEND OFFLINE
-          </div>
-        ) : (
-          <div className="demo-badge" style={{ opacity: 0.85 }}>
-            <span className="demo-dot" style={{ background: '#10b981' }} />
-            LIVE DATA
-          </div>
-        )}
+           <div className="demo-badge" title="Backend unavailable — showing demo data (historical window)">
+             <span className="demo-dot" style={{ background: '#f97316' }} />
+             DEMO DATA · BACKEND OFFLINE
+           </div>
+         ) : (
+           <div className="demo-badge" style={{ opacity: 0.85 }} title="Historical window (last 300/station) — simulated near-real-time prototype">
+             <span className="demo-dot" style={{ background: '#10b981' }} />
+             SIMULATED LIVE · HISTORICAL
+           </div>
+         )}
       </div>
     </aside>
   );

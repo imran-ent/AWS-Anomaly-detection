@@ -218,3 +218,42 @@ export async function getWeather(limit = 20) {
 export async function getDetect(limit = 50) {
   return fetchWithFallback(`${BASE_URL}/api/detect?limit=${limit}`, async () => [], { label: 'detect' });
 }
+
+// ─── Data Quality / Model / Pipeline ────────────────────────────────────────
+export async function getDataQuality() {
+  return fetchWithFallback(`${BASE_URL}/api/data-quality`, async () => ({ window: {}, full_dataset: {} }), { label: 'data-quality' });
+}
+export async function getModelPerformance() {
+  return fetchWithFallback(`${BASE_URL}/api/model/performance`, async () => ({ has_ground_truth: false }), { label: 'model performance' });
+}
+export async function getModelInfo() {
+  return fetchWithFallback(`${BASE_URL}/api/model/info`, async () => ({}), { label: 'model info' });
+}
+export async function getPipeline() {
+  return fetchWithFallback(`${BASE_URL}/api/pipeline`, async () => ({ pipeline: [] }), { label: 'pipeline' });
+}
+export async function getTrends(days = 7, stationId = null, parameter = null) {
+  let url = `${BASE_URL}/api/trends?days=${days}`;
+  if (stationId) url += `&station_id=${stationId}`;
+  if (parameter) url += `&parameter=${parameter}`;
+  return fetchWithFallback(url, async () => ({ trend: [] }), { label: 'trends' });
+}
+export async function getAnomalyById(id) {
+  const res = await fetch(`${BASE_URL}/api/anomalies/${id}`);
+  if (!res.ok) throw new Error(`Anomaly ${id} fetch failed: ${res.status}`);
+  return res.json();
+}
+// Time/Station/Parameter filtered anomalies helper
+export async function getAnomaliesFiltered({ stationId = null, severity = null, parameter = null, limit = 100 } = {}) {
+  const params = new URLSearchParams();
+  if (stationId) params.append('station_id', stationId);
+  if (severity && severity !== 'All') params.append('severity', severity);
+  if (limit) params.append('limit', limit);
+  const url = `${BASE_URL}/api/anomalies?${params.toString()}`;
+  // parameter filtering is client-side (backend does not filter param yet), but fetch then filter
+  const data = await fetchWithFallback(url, async () => [...anomaliesData].slice(0, limit), { label: 'anomalies filtered' });
+  if (parameter && parameter !== 'All') {
+    return data.filter(a => (a.parameter === parameter) || (a.display_parameter === parameter));
+  }
+  return data;
+}

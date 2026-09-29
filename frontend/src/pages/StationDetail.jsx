@@ -32,11 +32,11 @@ import { SeverityBadge, StatusBadge, formatTime } from '../components/Badges';
 import { getStationById, getStationHistory, getAnomalies, BASE_URL } from '../services/api';
 
 const READINGS = [
-  { key: 'temperature', label: 'Temperature', unit: '°C', icon: Thermometer, color: '#38BDF8' },
-  { key: 'humidity', label: 'Humidity', unit: '%', icon: Droplets, color: '#2DD4BF' },
-  { key: 'rainfall', label: 'Rainfall', unit: 'mm', icon: CloudRain, color: '#A78BFA' },
-  { key: 'wind_speed', label: 'Wind Speed', unit: 'km/h', icon: Wind, color: '#4ADE80' },
-  { key: 'pressure', label: 'Pressure', unit: 'hPa', icon: Gauge, color: '#FCD34D' },
+  { key: 'temperature', label: 'Temperature', unit: '°C', icon: Thermometer, color: '#2563EB' },
+  { key: 'humidity', label: 'Humidity', unit: '%', icon: Droplets, color: '#0E7490' },
+  { key: 'rainfall', label: 'Rainfall', unit: 'mm', icon: CloudRain, color: '#6D28D9' },
+  { key: 'wind_speed', label: 'Wind Speed', unit: 'km/h', icon: Wind, color: '#15803D' },
+  { key: 'pressure', label: 'Pressure', unit: 'hPa', icon: Gauge, color: '#B45309' },
 ];
 
 function formatHour(ts) {
@@ -199,7 +199,7 @@ export default function StationDetail() {
     );
   }
 
-  const paramMeta = { temperature: { label: 'Temperature', unit: '°C', color: '#38BDF8' }, humidity: { label: 'Humidity', unit: '%', color: '#2DD4BF' }, pressure: { label: 'Pressure', unit: 'hPa', color: '#FCD34D' } };
+  const paramMeta = { temperature: { label: 'Temperature', unit: '°C', color: '#2563EB' }, humidity: { label: 'Humidity', unit: '%', color: '#0E7490' }, pressure: { label: 'Pressure', unit: 'hPa', color: '#B45309' } };
 
   return (
     <>
@@ -215,7 +215,7 @@ export default function StationDetail() {
               <StatusBadge anomalyStatus={station.anomaly_status} />
             </div>
             <div style={{ display: 'flex', gap: 6, marginBottom: 16, fontSize: 12, color: 'var(--text-secondary)' }}><MapPin size={13} color="var(--accent-cyan)" />{station.latitude}°N, {station.longitude}°E</div>
-            <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 8, padding: 14, fontSize: 12, lineHeight: 2 }}>
+            <div style={{ background: 'rgba(37,99,235,0.05)', borderRadius: 8, padding: 14, fontSize: 12, lineHeight: 2 }}>
               {[
                 ['Station ID', station.station_id],
                 ['State', station.state],
@@ -301,16 +301,16 @@ export default function StationDetail() {
             <div className="chart-container-tall">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={historyFormatted}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.07)" />
-                  <XAxis dataKey="time" tick={{ fill: 'rgba(244,247,254,0.45)', fontSize: 10 }} axisLine={{ stroke: 'rgba(255,255,255,0.14)' }} tickLine={false} interval={historyFormatted.length > 24 ? Math.floor(historyFormatted.length/12) : 2} />
-                  <YAxis tick={{ fill: 'rgba(244,247,254,0.45)', fontSize: 10 }} axisLine={false} tickLine={false} width={40} domain={['auto','auto']} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5EAF2" />
+                  <XAxis dataKey="time" tick={{ fill: '#718096', fontSize: 10 }} axisLine={{ stroke: '#E5EAF2' }} tickLine={false} interval={historyFormatted.length > 24 ? Math.floor(historyFormatted.length/12) : 2} />
+                  <YAxis tick={{ fill: '#718096', fontSize: 10 }} axisLine={false} tickLine={false} width={40} domain={['auto','auto']} />
                   <Tooltip content={<HistoryTooltip />} />
                   <Legend wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
                   {/* Bounds area */}
-                  <Line type="monotone" dataKey="upper" name="Upper Bound" stroke="rgba(255,255,255,0.3)" strokeDasharray="4 4" dot={false} strokeWidth={1.2} />
-                  <Line type="monotone" dataKey="lower" name="Lower Bound" stroke="rgba(255,255,255,0.3)" strokeDasharray="4 4" dot={false} strokeWidth={1.2} />
-                  <Line type="monotone" dataKey="expected" name="Expected (rolling mean)" stroke="rgba(244,247,254,0.55)" strokeDasharray="6 3" dot={false} strokeWidth={1.5} />
-                  <Line type="monotone" dataKey="actual" name={`Actual ${paramMeta[selectedParam].label}`} stroke={paramMeta[selectedParam].color} strokeWidth={2} dot={({ cx, cy, payload }) => payload?.is_anomaly ? <circle cx={cx} cy={cy} r={5} fill="#ef4444" stroke="#fff" strokeWidth={1.5} /> : <circle cx={cx} cy={cy} r={2} fill={paramMeta[selectedParam].color} />} activeDot={{ r: 5 }} />
+                  <Line type="monotone" dataKey="upper" name="Upper Bound" stroke="#CBD5E1" strokeDasharray="4 4" dot={false} strokeWidth={1.2} />
+                  <Line type="monotone" dataKey="lower" name="Lower Bound" stroke="#CBD5E1" strokeDasharray="4 4" dot={false} strokeWidth={1.2} />
+                  <Line type="monotone" dataKey="expected" name="Expected (rolling mean)" stroke="#94A3B8" strokeDasharray="6 3" dot={false} strokeWidth={1.5} />
+                  <Line type="monotone" dataKey="actual" name={`Actual ${paramMeta[selectedParam].label}`} stroke={paramMeta[selectedParam].color} strokeWidth={2.5} dot={({ cx, cy, payload }) => payload?.is_anomaly ? <circle cx={cx} cy={cy} r={5} fill="#DC2626" stroke="#fff" strokeWidth={1.5} /> : <circle cx={cx} cy={cy} r={2} fill={paramMeta[selectedParam].color} />} activeDot={{ r: 5 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>

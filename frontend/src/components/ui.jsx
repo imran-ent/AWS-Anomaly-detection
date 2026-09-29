@@ -2,7 +2,7 @@ import { CheckCircle2, Database } from 'lucide-react';
 
 /* KPI card — glass, large number, icon + label + optional trend */
 export function KpiCard({ icon: Icon, label, value, sub, trend, tint }) {
-  const t = tint || { bg: 'rgba(59,130,246,0.16)', fg: '#7DD3FC' };
+  const t = tint || { bg: '#DBEAFE', fg: '#2563EB' };
   return (
     <div className="kpi-card">
       <div className="kpi-top">
@@ -19,12 +19,12 @@ export function KpiCard({ icon: Icon, label, value, sub, trend, tint }) {
 }
 
 export const TINTS = {
-  blue: { bg: 'rgba(59,130,246,0.16)', fg: '#7DD3FC' },
-  violet: { bg: 'rgba(139,92,246,0.16)', fg: '#C4B5FD' },
-  cyan: { bg: 'rgba(56,189,248,0.14)', fg: '#7DD3FC' },
-  green: { bg: 'rgba(34,197,94,0.14)', fg: '#4ADE80' },
-  amber: { bg: 'rgba(245,158,11,0.14)', fg: '#FCD34D' },
-  red: { bg: 'rgba(239,68,68,0.14)', fg: '#FCA5A5' },
+  blue: { bg: '#DBEAFE', fg: '#2563EB' },
+  violet: { bg: '#EDE9FE', fg: '#6D28D9' },
+  cyan: { bg: '#E0F2FE', fg: '#0284C7' },
+  green: { bg: '#DCFCE7', fg: '#15803D' },
+  amber: { bg: '#FEF3C7', fg: '#B45309' },
+  red: { bg: '#FEE2E2', fg: '#DC2626' },
 };
 
 /* Skeleton placeholders matching real layout */
@@ -95,7 +95,7 @@ export function NoAnomalies({ lastChecked }) {
 export function NoData({ title = 'No weather data available', body = 'Upload a CSV file to begin anomaly analysis.', action }) {
   return (
     <div className="empty-state">
-      <span className="empty-icon" style={{ background: 'rgba(56,189,248,0.12)', borderColor: 'rgba(56,189,248,0.3)', color: '#7DD3FC' }}>
+      <span className="empty-icon" style={{ background: '#E0F2FE', borderColor: '#BAE6FD', color: '#0284C7' }}>
         <Database size={22} />
       </span>
       <b>{title}</b>

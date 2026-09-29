@@ -16,13 +16,13 @@ import {
   getModelPerformance, getModelInfo, getPipeline, getStations, getAnomalies,
 } from '../services/api';
 
-const AXIS = { fill: 'rgba(244,247,254,0.45)', fontSize: 11 };
+const AXIS = { fill: '#718096', fontSize: 11 };
 
 function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: 'rgba(13,32,72,0.95)', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 10, padding: '10px 14px', fontSize: 12, boxShadow: '0 8px 32px rgba(2,6,23,0.5)' }}>
-      <p style={{ color: 'rgba(244,247,254,0.65)', marginBottom: 6, fontWeight: 600 }}>{label}</p>
+    <div style={{ background: '#fff', border: '1px solid rgba(120,160,220,0.3)', borderRadius: 10, padding: '10px 14px', fontSize: 12, boxShadow: '0 8px 28px rgba(37,99,235,0.14)' }}>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>{label}</p>
       {payload.map((p) => (
         <p key={p.name} style={{ color: p.color || p.stroke, margin: '2px 0' }}>{p.name}: <strong>{p.value}</strong></p>
       ))}
@@ -95,8 +95,8 @@ export default function Dashboard() {
                 </button>
               </div>
             </div>
-            <div className="card" style={{ background: 'rgba(255,255,255,0.05)', position: 'relative', zIndex: 1 }}>
-              <div className="card-title" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#7DD3FC' }}>Live detection flow</div>
+            <div className="card" style={{ background: 'rgba(255,255,255,0.55)', position: 'relative', zIndex: 1 }}>
+              <div className="card-title" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#1D4ED8' }}>Live detection flow</div>
               <div style={{ display: 'flex', flexDirection: 'column', marginTop: 12 }}>
                 {[
                   [`Temperature`, env.temp != null ? `${env.temp.toFixed(1)} °C mean` : '—'],
@@ -106,8 +106,8 @@ export default function Dashboard() {
                 ].map(([t, s], i, arr) => (
                   <div key={t} style={{ display: 'flex', gap: 10 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: i === arr.length - 1 ? '#EF4444' : '#38BDF8', boxShadow: `0 0 10px ${i === arr.length - 1 ? '#EF4444' : '#38BDF8'}` }} />
-                      {i < arr.length - 1 && <span style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.2)' }} />}
+                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: i === arr.length - 1 ? '#DC2626' : '#2563EB' }} />
+                      {i < arr.length - 1 && <span style={{ width: 1, height: 16, background: '#D8E2F2' }} />}
                     </div>
                     <div style={{ paddingBottom: 12 }}>
                       <b style={{ display: 'block', fontSize: 12.5 }}>{t}</b>
@@ -157,18 +157,18 @@ export default function Dashboard() {
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={trend}>
                       <defs>
-                        <linearGradient id="dHigh" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#EF4444" stopOpacity={0.3} /><stop offset="95%" stopColor="#EF4444" stopOpacity={0} /></linearGradient>
-                        <linearGradient id="dMed" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#F59E0B" stopOpacity={0.22} /><stop offset="95%" stopColor="#F59E0B" stopOpacity={0} /></linearGradient>
-                        <linearGradient id="dLow" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#38BDF8" stopOpacity={0.2} /><stop offset="95%" stopColor="#38BDF8" stopOpacity={0} /></linearGradient>
+                        <linearGradient id="dHigh" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#DC2626" stopOpacity={0.22} /><stop offset="95%" stopColor="#DC2626" stopOpacity={0} /></linearGradient>
+                        <linearGradient id="dMed" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#D97706" stopOpacity={0.18} /><stop offset="95%" stopColor="#D97706" stopOpacity={0} /></linearGradient>
+                        <linearGradient id="dLow" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#0284C7" stopOpacity={0.18} /><stop offset="95%" stopColor="#0284C7" stopOpacity={0} /></linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.07)" />
-                      <XAxis dataKey="date" tick={AXIS} axisLine={{ stroke: 'rgba(255,255,255,0.14)' }} tickLine={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5EAF2" />
+                      <XAxis dataKey="date" tick={AXIS} axisLine={{ stroke: '#E5EAF2' }} tickLine={false} />
                       <YAxis tick={AXIS} axisLine={false} tickLine={false} width={30} />
                       <Tooltip content={<ChartTooltip />} />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
-                      <Area type="monotone" dataKey="high" name="Critical" stroke="#EF4444" strokeWidth={2.5} fill="url(#dHigh)" dot={false} activeDot={{ r: 5, fill: '#EF4444' }} />
-                      <Area type="monotone" dataKey="medium" name="Medium" stroke="#F59E0B" strokeWidth={2.5} fill="url(#dMed)" dot={false} activeDot={{ r: 4 }} />
-                      <Area type="monotone" dataKey="low" name="Low" stroke="#38BDF8" strokeWidth={2.5} fill="url(#dLow)" dot={false} activeDot={{ r: 4 }} />
+                      <Area type="monotone" dataKey="high" name="Critical" stroke="#DC2626" strokeWidth={2.5} fill="url(#dHigh)" dot={false} activeDot={{ r: 5, fill: '#DC2626' }} />
+                      <Area type="monotone" dataKey="medium" name="Medium" stroke="#D97706" strokeWidth={2.5} fill="url(#dMed)" dot={false} activeDot={{ r: 4 }} />
+                      <Area type="monotone" dataKey="low" name="Low" stroke="#0284C7" strokeWidth={2.5} fill="url(#dLow)" dot={false} activeDot={{ r: 4 }} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div></div>
@@ -191,10 +191,10 @@ export default function Dashboard() {
                       <defs>
                         <linearGradient id="dBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3B82F6" /><stop offset="100%" stopColor="#8B5CF6" /></linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.07)" vertical={false} />
-                      <XAxis dataKey="date" tick={AXIS} axisLine={{ stroke: 'rgba(255,255,255,0.14)' }} tickLine={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5EAF2" vertical={false} />
+                      <XAxis dataKey="date" tick={AXIS} axisLine={{ stroke: '#E5EAF2' }} tickLine={false} />
                       <YAxis tick={AXIS} axisLine={false} tickLine={false} width={30} />
-                      <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                      <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(37,99,235,0.06)' }} />
                       <Bar dataKey="anomalies" name="Anomalies" fill="url(#dBar)" radius={[5, 5, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -202,7 +202,7 @@ export default function Dashboard() {
               </div>
               <div className="card">
                 <div className="card-header">
-                  <div className="card-title"><CheckCircle2 size={15} color="#4ADE80" /> System Health</div>
+                  <div className="card-title"><CheckCircle2 size={15} color="#15803D" /> System Health</div>
                 </div>
                 <div className="health-list" style={{ gridTemplateColumns: '1fr 1fr' }}>
                   <div className="health-item"><span className="dot green" /><div><b>Data Pipeline</b><span>Operational · 5 min cache</span></div></div>
@@ -223,7 +223,7 @@ export default function Dashboard() {
             <div className="card mb-4" style={{ padding: 0, overflow: 'hidden' }}>
               <div className="card-header" style={{ padding: '22px 22px 0' }}>
                 <div>
-                  <div className="card-title"><TriangleAlert size={15} color="#FCA5A5" /> Recent Anomalies</div>
+                  <div className="card-title"><TriangleAlert size={15} color="#DC2626" /> Recent Anomalies</div>
                   <div className="card-subtitle">Timestamp · sensor · observed · expected · deviation · severity</div>
                 </div>
                 <button className="btn btn-secondary" onClick={() => navigate('/anomalies')}>Open anomaly monitor <ArrowRight size={14} /></button>
@@ -239,7 +239,7 @@ export default function Dashboard() {
                         {recent.map((a) => (
                           <tr key={a.id} className={a.severity === 'High' ? 'row-anomalous' : a.severity === 'Medium' ? 'row-medium' : ''} onClick={() => navigate('/anomalies')}>
                             <td className="text-muted" style={{ fontSize: 12 }}>{formatTime(a.timestamp)}</td>
-                            <td><span className="font-mono" style={{ color: '#7DD3FC', fontWeight: 700 }}>{a.station_id}</span> <span style={{ textTransform: 'capitalize', color: 'var(--text-secondary)', fontSize: 12 }}>{String(a.parameter || '').replace('_', ' ')}</span></td>
+                            <td><span className="font-mono" style={{ color: '#1D4ED8', fontWeight: 700 }}>{a.station_id}</span> <span style={{ textTransform: 'capitalize', color: 'var(--text-secondary)', fontSize: 12 }}>{String(a.parameter || '').replace('_', ' ')}</span></td>
                             <td className="num" style={{ fontWeight: 700 }}>{a.anomaly_value ?? '—'}</td>
                             <td className="num text-muted">{a.expected_range ?? '—'}</td>
                             <td className="num">{a.anomaly_score ?? '—'}</td>
@@ -258,7 +258,7 @@ export default function Dashboard() {
             <div className="card mb-4">
               <div className="card-header">
                 <div>
-                  <div className="card-title"><Radio size={15} color="#7DD3FC" /> Station Status</div>
+                  <div className="card-title"><Radio size={15} color="#2563EB" /> Station Status</div>
                   <div className="card-subtitle">{stations.length} stations · click a row to inspect history</div>
                 </div>
                 <button className="btn btn-ghost" onClick={() => navigate('/weather')}>All stations <ArrowRight size={14} /></button>
@@ -269,7 +269,7 @@ export default function Dashboard() {
                   <tbody>
                     {stations.slice(0, 8).map((s) => (
                       <tr key={s.station_id} className={s.anomaly_status ? 'row-anomalous' : ''} onClick={() => navigate(`/stations/${s.station_id}`)}>
-                        <td className="font-mono" style={{ fontWeight: 700, color: '#7DD3FC' }}>{s.station_id}</td>
+                        <td className="font-mono" style={{ fontWeight: 700, color: '#1D4ED8' }}>{s.station_id}</td>
                         <td>{s.location || s.city}</td>
                         <td className="num">{s.temperature ?? '—'} °C</td>
                         <td className="num">{s.humidity ?? '—'} %</td>

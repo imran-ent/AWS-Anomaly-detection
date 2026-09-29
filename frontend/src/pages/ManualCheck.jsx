@@ -262,7 +262,7 @@ export default function ManualCheck() {
                     marginBottom: 6,
                   }}
                 >
-                  <Droplets size={12} color="#60a5fa" />
+                  <Droplets size={12} color="#0284C7" />
                   Humidity
                 </label>
                 <div style={{ position: 'relative' }}>
@@ -314,7 +314,7 @@ export default function ManualCheck() {
                     marginBottom: 6,
                   }}
                 >
-                  <Gauge size={12} color="#fb923c" />
+                  <Gauge size={12} color="#B45309" />
                   Pressure
                 </label>
                 <div style={{ position: 'relative' }}>
@@ -395,7 +395,7 @@ export default function ManualCheck() {
                   fontSize: 11,
                   color: 'var(--text-muted)',
                   lineHeight: 1.6,
-                  background: 'rgba(255,255,255,0.02)',
+                  background: 'rgba(37,99,235,0.04)',
                   border: '1px solid var(--border-subtle)',
                   borderRadius: 8,
                   padding: '10px 12px',
@@ -543,8 +543,8 @@ export default function ManualCheck() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
                       {[
                         { label: 'Temperature', value: result.input.temperature, unit: '°C', icon: Thermometer, color: 'var(--accent-cyan)' },
-                        { label: 'Humidity', value: result.input.humidity, unit: '%', icon: Droplets, color: '#60a5fa' },
-                        { label: 'Pressure', value: result.input.pressure, unit: 'hPa', icon: Gauge, color: '#fb923c' },
+                        { label: 'Humidity', value: result.input.humidity, unit: '%', icon: Droplets, color: '#0284C7' },
+                        { label: 'Pressure', value: result.input.pressure, unit: 'hPa', icon: Gauge, color: '#B45309' },
                       ].map((r) => {
                         const Icon = r.icon;
                         return (

@@ -95,7 +95,7 @@ export default function UploadDropzone({ onValidated }) {
       </div>
 
       {error && (
-        <div className="note-box mt-4 flex-row" style={{ borderColor: 'rgba(239,68,68,0.35)', color: '#FCA5A5' }} role="alert">
+        <div className="note-box mt-4 flex-row" style={{ borderColor: '#FECACA', color: '#B91C1C' }} role="alert">
           <TriangleAlert size={14} style={{ flexShrink: 0 }} /> {error}
         </div>
       )}

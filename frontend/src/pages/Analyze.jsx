@@ -75,7 +75,7 @@ export default function Analyze() {
           <div className="card mb-4">
             <div className="card-header">
               <div>
-                <div className="card-title"><FlaskConical size={15} color="#7DD3FC" /> Row-level analysis</div>
+                <div className="card-title"><FlaskConical size={15} color="#2563EB" /> Row-level analysis</div>
                 <div className="card-subtitle">
                   Showing first {preview.length} of {meta.report.rowCount.toLocaleString()} rows · each analysis calls the live Isolation Forest model
                 </div>
@@ -98,7 +98,7 @@ export default function Analyze() {
                     return (
                       <tr key={i}>
                         <td className="text-muted">{i + 1}</td>
-                        <td className="font-mono" style={{ color: '#7DD3FC', fontWeight: 700 }}>
+                        <td className="font-mono" style={{ color: '#1D4ED8', fontWeight: 700 }}>
                           {(cols?.station && String(row[cols.station] || '—')) || fallbackStation || '—'}
                         </td>
                         <td className="num">{cols?.temperature ? String(row[cols.temperature] ?? '—') : '—'}</td>
@@ -112,7 +112,7 @@ export default function Analyze() {
                               <span className="num text-muted" style={{ fontSize: 11 }}>score {r.prediction?.anomaly_score ?? '—'}</span>
                             </span>
                           )}
-                          {errors[i] && <span style={{ fontSize: 11.5, color: '#FCA5A5' }}>{errors[i]}</span>}
+                          {errors[i] && <span style={{ fontSize: 11.5, color: '#B91C1C' }}>{errors[i]}</span>}
                         </td>
                         <td>
                           <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12 }} disabled={busy === i} onClick={() => analyzeRow(i)}>

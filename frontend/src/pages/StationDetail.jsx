@@ -32,11 +32,11 @@ import { SeverityBadge, StatusBadge, formatTime } from '../components/Badges';
 import { getStationById, getStationHistory, getAnomalies, BASE_URL } from '../services/api';
 
 const READINGS = [
-  { key: 'temperature', label: 'Temperature', unit: '°C', icon: Thermometer, color: 'var(--accent-cyan)' },
-  { key: 'humidity', label: 'Humidity', unit: '%', icon: Droplets, color: '#60a5fa' },
-  { key: 'rainfall', label: 'Rainfall', unit: 'mm', icon: CloudRain, color: '#818cf8' },
-  { key: 'wind_speed', label: 'Wind Speed', unit: 'km/h', icon: Wind, color: '#34d399' },
-  { key: 'pressure', label: 'Pressure', unit: 'hPa', icon: Gauge, color: '#fb923c' },
+  { key: 'temperature', label: 'Temperature', unit: '°C', icon: Thermometer, color: '#1D5FBF' },
+  { key: 'humidity', label: 'Humidity', unit: '%', icon: Droplets, color: '#0E7490' },
+  { key: 'rainfall', label: 'Rainfall', unit: 'mm', icon: CloudRain, color: '#6366F1' },
+  { key: 'wind_speed', label: 'Wind Speed', unit: 'km/h', icon: Wind, color: '#0F766E' },
+  { key: 'pressure', label: 'Pressure', unit: 'hPa', icon: Gauge, color: '#B45309' },
 ];
 
 function formatHour(ts) {
@@ -199,11 +199,11 @@ export default function StationDetail() {
     );
   }
 
-  const paramMeta = { temperature: { label: 'Temperature', unit: '°C', color: '#00d4ff' }, humidity: { label: 'Humidity', unit: '%', color: '#60a5fa' }, pressure: { label: 'Pressure', unit: 'hPa', color: '#fb923c' } };
+  const paramMeta = { temperature: { label: 'Temperature', unit: '°C', color: '#1D5FBF' }, humidity: { label: 'Humidity', unit: '%', color: '#0E7490' }, pressure: { label: 'Pressure', unit: 'hPa', color: '#B45309' } };
 
   return (
     <>
-      <TopBar title={`${station.location} — ${station.station_id}`} subtitle={`${station.state} · Elevation ${station.elevation}m · Simulated historical window`} />
+      <TopBar title={`${station.location} — ${station.station_id}`} subtitle={`${station.state} · Elevation ${station.elevation}m · Latest window readings`} />
 
       <div className="page-wrapper">
         <button onClick={() => navigate(-1)} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20, cursor: 'pointer', background: 'none', border: 'none', transition: 'color var(--transition)' }} onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent-cyan)')} onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}><ArrowLeft size={15} />Back to Stations</button>
@@ -301,15 +301,15 @@ export default function StationDetail() {
             <div className="chart-container-tall">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={historyFormatted}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="time" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={{ stroke: 'var(--border-subtle)' }} tickLine={false} interval={historyFormatted.length > 24 ? Math.floor(historyFormatted.length/12) : 2} />
-                  <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} axisLine={false} tickLine={false} width={40} domain={['auto','auto']} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                  <XAxis dataKey="time" tick={{ fill: '#64748B', fontSize: 10 }} axisLine={{ stroke: '#E2E8F0' }} tickLine={false} interval={historyFormatted.length > 24 ? Math.floor(historyFormatted.length/12) : 2} />
+                  <YAxis tick={{ fill: '#64748B', fontSize: 10 }} axisLine={false} tickLine={false} width={40} domain={['auto','auto']} />
                   <Tooltip content={<HistoryTooltip />} />
-                  <Legend wrapperStyle={{ fontSize: 11, color: 'var(--text-secondary)', paddingTop: 10 }} />
+                  <Legend wrapperStyle={{ fontSize: 11, color: '#475569', paddingTop: 10 }} />
                   {/* Bounds area */}
-                  <Line type="monotone" dataKey="upper" name="Upper Bound" stroke="rgba(255,255,255,0.25)" strokeDasharray="4 4" dot={false} strokeWidth={1} />
-                  <Line type="monotone" dataKey="lower" name="Lower Bound" stroke="rgba(255,255,255,0.25)" strokeDasharray="4 4" dot={false} strokeWidth={1} />
-                  <Line type="monotone" dataKey="expected" name="Expected (rolling mean)" stroke="#9ca3af" strokeDasharray="6 3" dot={false} strokeWidth={1.5} />
+                  <Line type="monotone" dataKey="upper" name="Upper Bound" stroke="#CBD5E1" strokeDasharray="4 4" dot={false} strokeWidth={1} />
+                  <Line type="monotone" dataKey="lower" name="Lower Bound" stroke="#CBD5E1" strokeDasharray="4 4" dot={false} strokeWidth={1} />
+                  <Line type="monotone" dataKey="expected" name="Expected (rolling mean)" stroke="#64748B" strokeDasharray="6 3" dot={false} strokeWidth={1.5} />
                   <Line type="monotone" dataKey="actual" name={`Actual ${paramMeta[selectedParam].label}`} stroke={paramMeta[selectedParam].color} strokeWidth={2} dot={({ cx, cy, payload }) => payload?.is_anomaly ? <circle cx={cx} cy={cy} r={5} fill="#ef4444" stroke="#fff" strokeWidth={1.5} /> : <circle cx={cx} cy={cy} r={2} fill={paramMeta[selectedParam].color} />} activeDot={{ r: 5 }} />
                 </LineChart>
               </ResponsiveContainer>

@@ -88,14 +88,14 @@ export default function WeatherData() {
 
   return (
     <>
-      <TopBar title="Historical Weather Data" subtitle={`${stations.length} stations · ${anomalousCount} with active anomalies · Simulated window (last 300/station) · Historical prototype`} />
+      <TopBar title="Station Monitoring" subtitle={`${stations.length} stations · ${anomalousCount} with active anomalies · Latest readings in window`} />
 
       <div className="page-wrapper">
         <div className="page-header">
           <div className="page-header-row">
             <div>
               <h1>Station Readings</h1>
-              <p>Current sensor readings from all AWS stations (latest in window). Parameters shown are those present in dataset (temperature, humidity, pressure) + synthesized rainfall/wind for completeness. Click a row for station detail & 24-hour history with expected bounds.</p>
+              <p>Current sensor readings from all weather stations (latest in window). Temperature, humidity and pressure are model inputs; rainfall and wind are shown for operational context. Select a row for history with expected bounds.</p>
             </div>
           </div>
         </div>

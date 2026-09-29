@@ -180,7 +180,7 @@ export default function AnomalyMonitoring() {
 
   return (
     <>
-      <TopBar title="Anomaly Monitoring" subtitle={`${totalAnomalies !== null ? totalAnomalies : anomalies.length} total anomalies${isMock ? ' · DEMO DATA' : ''} · ${highCount} high severity · Simulated historical window`} />
+      <TopBar title="Anomaly Analytics" subtitle={`${totalAnomalies !== null ? totalAnomalies : anomalies.length} total anomalies${isMock ? ' · Demo data' : ''} · ${highCount} high severity`} />
 
       <div className="page-wrapper">
         <div className="page-header">
@@ -216,18 +216,18 @@ export default function AnomalyMonitoring() {
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={trend}>
                     <defs>
-                      <linearGradient id="gHigh" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.4} /><stop offset="95%" stopColor="#ef4444" stopOpacity={0} /></linearGradient>
-                      <linearGradient id="gMed" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f97316" stopOpacity={0.3} /><stop offset="95%" stopColor="#f97316" stopOpacity={0} /></linearGradient>
-                      <linearGradient id="gLow" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#facc15" stopOpacity={0.25} /><stop offset="95%" stopColor="#facc15" stopOpacity={0} /></linearGradient>
+                      <linearGradient id="gHigh" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#B91C1C" stopOpacity={0.25} /><stop offset="95%" stopColor="#B91C1C" stopOpacity={0} /></linearGradient>
+                      <linearGradient id="gMed" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#B45309" stopOpacity={0.2} /><stop offset="95%" stopColor="#B45309" stopOpacity={0} /></linearGradient>
+                      <linearGradient id="gLow" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#92400E" stopOpacity={0.15} /><stop offset="95%" stopColor="#92400E" stopOpacity={0} /></linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={{ stroke: 'var(--border-subtle)' }} tickLine={false} />
-                    <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} width={28} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                    <XAxis dataKey="date" tick={{ fill: '#64748B', fontSize: 11 }} axisLine={{ stroke: '#E2E8F0' }} tickLine={false} />
+                    <YAxis tick={{ fill: '#64748B', fontSize: 11 }} axisLine={false} tickLine={false} width={28} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Legend wrapperStyle={{ fontSize: 11, color: 'var(--text-secondary)', paddingTop: 10 }} />
-                    <Area type="monotone" dataKey="high" name="High" stroke="#ef4444" strokeWidth={2.5} fill="url(#gHigh)" />
-                    <Area type="monotone" dataKey="medium" name="Medium" stroke="#f97316" strokeWidth={2} fill="url(#gMed)" />
-                    <Area type="monotone" dataKey="low" name="Low" stroke="#facc15" strokeWidth={1.5} fill="url(#gLow)" />
+                    <Legend wrapperStyle={{ fontSize: 11, color: '#475569', paddingTop: 10 }} />
+                    <Area type="monotone" dataKey="high" name="High" stroke="#B91C1C" strokeWidth={2} fill="url(#gHigh)" />
+                    <Area type="monotone" dataKey="medium" name="Medium" stroke="#B45309" strokeWidth={2} fill="url(#gMed)" />
+                    <Area type="monotone" dataKey="low" name="Low" stroke="#92400E" strokeWidth={1.5} fill="url(#gLow)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

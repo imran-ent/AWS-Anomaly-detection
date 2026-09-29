@@ -1,5 +1,5 @@
 /**
- * API Service Layer — METEORA AWS Anomaly Detection Dashboard
+ * API Service Layer — WeatherGuard AI monitoring dashboard
  * Now connected to FastAPI backend at VITE_API_URL or http://localhost:8000
  * Mock fallback is retained ONLY for offline demo and is explicitly labeled as DEMO DATA.
  * Production: if backend is reachable, real data MUST be used. If backend fails,
@@ -45,7 +45,7 @@ async function fetchWithFallback(url, fallbackFn, { allowMock = true, label = 'd
       // Production: do not hide failure with fake data
       throw e;
     }
-    console.warn(`[METEORA] Using DEMO/MOCK fallback for ${label} — data is NOT real. Backend unavailable. Set VITE_USE_MOCK_DATA=false to disable mock in production.`);
+    console.warn(`[WeatherGuard AI] Using DEMO/MOCK fallback for ${label} — data is NOT real. Backend unavailable. Set VITE_USE_MOCK_DATA=false to disable mock in production.`);
     lastFetchWasMock = true;
     const mock = await fallbackFn();
     if (Array.isArray(mock)) {

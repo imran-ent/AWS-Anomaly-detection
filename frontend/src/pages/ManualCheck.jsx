@@ -361,9 +361,9 @@ export default function ManualCheck() {
                   marginTop: 4,
                   background: loading
                     ? 'var(--bg-elevated)'
-                    : 'linear-gradient(90deg, var(--accent-cyan), var(--accent-teal))',
-                  color: loading ? 'var(--text-muted)' : '#00111f',
-                  border: '1px solid var(--glass-border)',
+                    : 'var(--brand-blue)',
+                  color: loading ? 'var(--text-muted)' : '#fff',
+                  border: '1px solid var(--brand-blue)',
                   borderRadius: 10,
                   padding: '12px 16px',
                   fontSize: 13,
@@ -656,7 +656,7 @@ export default function ManualCheck() {
           <div className="card-header">
             <div className="card-title">
               <Activity size={16} color="var(--accent-cyan)" />
-              How METEORA Detects Anomalies
+              How WeatherGuard AI Detects Anomalies
             </div>
             <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>End-to-end ML pipeline — single source of truth</span>
           </div>

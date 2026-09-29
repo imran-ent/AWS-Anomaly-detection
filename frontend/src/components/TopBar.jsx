@@ -25,19 +25,21 @@ export default function TopBar({ title, subtitle }) {
 
   return (
     <header className="topbar">
-      <div className="topbar-title">
-        <h1>{title}</h1>
-        {subtitle && <p>{subtitle}</p>}
-      </div>
+      <div className="topbar-inner">
+        <div className="topbar-title">
+          <h1>{title}</h1>
+          {subtitle && <p>{subtitle}</p>}
+        </div>
 
-      <div className="topbar-actions">
-        <span className="topbar-time">
-          {dateFmt} &nbsp;|&nbsp; IST {fmt}
-        </span>
+        <div className="topbar-actions">
+          <span className="topbar-time">
+            {dateFmt} &nbsp;|&nbsp; IST {fmt}
+          </span>
 
-        <div className="system-status-pill">
-          <span className="status-dot-live" />
-          Operational
+          <div className="system-status-pill">
+            <span className="status-dot-live" />
+            Operational
+          </div>
         </div>
       </div>
     </header>

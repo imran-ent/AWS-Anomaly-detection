@@ -48,8 +48,8 @@ const SEVERITY_ORDER = { High: 0, Medium: 1, Low: 2 };
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', fontSize: 12 }}>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: 6, fontWeight: 600 }}>{label}</p>
+      <div style={{ background: 'rgba(13,32,72,0.95)', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 10, padding: '10px 14px', fontSize: 12 }}>
+        <p style={{ color: 'rgba(244,247,254,0.65)', marginBottom: 6, fontWeight: 600 }}>{label}</p>
         {payload.map((p) => (<p key={p.name} style={{ color: p.color, margin: '2px 0' }}>{p.name}: <strong>{p.value}</strong></p>))}
       </div>
     );
@@ -216,18 +216,18 @@ export default function AnomalyMonitoring() {
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={trend}>
                     <defs>
-                      <linearGradient id="gHigh" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#B91C1C" stopOpacity={0.25} /><stop offset="95%" stopColor="#B91C1C" stopOpacity={0} /></linearGradient>
-                      <linearGradient id="gMed" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#B45309" stopOpacity={0.2} /><stop offset="95%" stopColor="#B45309" stopOpacity={0} /></linearGradient>
-                      <linearGradient id="gLow" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#92400E" stopOpacity={0.15} /><stop offset="95%" stopColor="#92400E" stopOpacity={0} /></linearGradient>
+                      <linearGradient id="gHigh" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#EF4444" stopOpacity={0.3} /><stop offset="95%" stopColor="#EF4444" stopOpacity={0} /></linearGradient>
+                      <linearGradient id="gMed" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#F59E0B" stopOpacity={0.22} /><stop offset="95%" stopColor="#F59E0B" stopOpacity={0} /></linearGradient>
+                      <linearGradient id="gLow" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#38BDF8" stopOpacity={0.2} /><stop offset="95%" stopColor="#38BDF8" stopOpacity={0} /></linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                    <XAxis dataKey="date" tick={{ fill: '#64748B', fontSize: 11 }} axisLine={{ stroke: '#E2E8F0' }} tickLine={false} />
-                    <YAxis tick={{ fill: '#64748B', fontSize: 11 }} axisLine={false} tickLine={false} width={28} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.07)" />
+                    <XAxis dataKey="date" tick={{ fill: 'rgba(244,247,254,0.45)', fontSize: 11 }} axisLine={{ stroke: 'rgba(255,255,255,0.14)' }} tickLine={false} />
+                    <YAxis tick={{ fill: 'rgba(244,247,254,0.45)', fontSize: 11 }} axisLine={false} tickLine={false} width={28} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Legend wrapperStyle={{ fontSize: 11, color: '#475569', paddingTop: 10 }} />
-                    <Area type="monotone" dataKey="high" name="High" stroke="#B91C1C" strokeWidth={2} fill="url(#gHigh)" />
-                    <Area type="monotone" dataKey="medium" name="Medium" stroke="#B45309" strokeWidth={2} fill="url(#gMed)" />
-                    <Area type="monotone" dataKey="low" name="Low" stroke="#92400E" strokeWidth={1.5} fill="url(#gLow)" />
+                    <Legend wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
+                    <Area type="monotone" dataKey="high" name="Critical" stroke="#EF4444" strokeWidth={2.5} fill="url(#gHigh)" dot={false} activeDot={{ r: 5, fill: '#EF4444' }} />
+                    <Area type="monotone" dataKey="medium" name="Medium" stroke="#F59E0B" strokeWidth={2.5} fill="url(#gMed)" dot={false} activeDot={{ r: 4 }} />
+                    <Area type="monotone" dataKey="low" name="Low" stroke="#38BDF8" strokeWidth={2.5} fill="url(#gLow)" dot={false} activeDot={{ r: 4 }} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

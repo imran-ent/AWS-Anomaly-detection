@@ -7,6 +7,7 @@ import AnomalyMonitoring from './pages/AnomalyMonitoring';
 import StationDetail from './pages/StationDetail';
 import Alerts from './pages/Alerts';
 import ManualCheck from './pages/ManualCheck';
+import Analyze from './pages/Analyze';
 import About from './pages/About';
 import './index.css';
 
@@ -23,6 +24,7 @@ export default function App() {
             <Route path="/stations/:stationId" element={<StationDetail />} />
             <Route path="/alerts" element={<Alerts />} />
             <Route path="/manual-check" element={<ManualCheck />} />
+            <Route path="/analyze" element={<Analyze />} />
             <Route path="/about" element={<About />} />
           </Routes>
           <Footer />

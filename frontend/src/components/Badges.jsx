@@ -1,13 +1,16 @@
-// Severity badge component — always pairs color with text
+// Severity badge — Low=blue, Medium=amber, High/Critical=red. Always pairs color with text.
 export function SeverityBadge({ severity }) {
+  const s = String(severity || 'Normal').toLowerCase();
   const cls =
-    severity === 'High'
+    s === 'high' || s === 'critical'
       ? 'badge badge-high'
-      : severity === 'Medium'
+      : s === 'medium'
       ? 'badge badge-medium'
-      : severity === 'Low'
+      : s === 'low'
       ? 'badge badge-low'
       : 'badge badge-normal';
+
+  const label = s === 'critical' ? 'Critical' : s === 'high' ? 'High' : s === 'medium' ? 'Medium' : s === 'low' ? 'Low' : 'Normal';
 
   const dot = (
     <span
@@ -25,7 +28,7 @@ export function SeverityBadge({ severity }) {
   return (
     <span className={cls}>
       {dot}
-      {severity || 'Normal'}
+      {label}
     </span>
   );
 }

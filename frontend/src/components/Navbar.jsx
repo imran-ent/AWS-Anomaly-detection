@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Radio, TriangleAlert, Bell, FlaskConical, Info, Menu, X, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Radio, TriangleAlert, Bell, FlaskConical, Info, Menu, X, ShieldCheck, UploadCloud } from 'lucide-react';
 import { getDashboardSummary } from '../services/api';
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/weather', label: 'Monitoring', icon: Radio },
-  { to: '/anomalies', label: 'Anomalies', icon: TriangleAlert },
+  { to: '/anomalies', label: 'Analytics', icon: TriangleAlert },
+  { to: '/analyze', label: 'Analyze', icon: UploadCloud },
   { to: '/alerts', label: 'Alerts', icon: Bell },
   { to: '/manual-check', label: 'Sensor Check', icon: FlaskConical },
   { to: '/about', label: 'About', icon: Info },

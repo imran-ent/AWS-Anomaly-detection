@@ -83,7 +83,7 @@ export default function Analyze() {
               {!cols?.station && (
                 <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', gap: 8, alignItems: 'center' }}>
                   Station for rows
-                  <select className="form-select" value={fallbackStation} onChange={(e) => setFallbackStation(e.target.value)}>
+                  <select className="form-select" aria-label="Station for rows without a station column" value={fallbackStation} onChange={(e) => setFallbackStation(e.target.value)}>
                     {stations.map((s) => (<option key={s.station_id} value={s.station_id}>{s.station_id} — {s.city}</option>))}
                   </select>
                 </label>

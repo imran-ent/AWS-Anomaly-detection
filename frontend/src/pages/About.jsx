@@ -65,7 +65,7 @@ export default function About() {
               ))}
             </div>
           ) : (
-            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 10 }}>
+            <div className="pipeline-steps">
               {[
                 ['Weather Station', '29 AWS stations, hourly readings'],
                 ['Sensor Data', 'Temperature, humidity, pressure'],

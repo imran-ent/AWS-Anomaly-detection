@@ -58,10 +58,12 @@ export function StatusBadge({ anomalyStatus }) {
   );
 }
 
-// Format timestamp to readable string
+// Format timestamp to readable string (safe for missing/invalid values)
 export function formatTime(ts) {
   if (!ts) return '—';
-  return new Date(ts).toLocaleString('en-IN', {
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('en-IN', {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',

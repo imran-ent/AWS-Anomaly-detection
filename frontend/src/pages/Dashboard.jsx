@@ -204,7 +204,7 @@ export default function Dashboard() {
                 <div className="card-header">
                   <div className="card-title"><CheckCircle2 size={15} color="#15803D" /> System Health</div>
                 </div>
-                <div className="health-list" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                <div className="health-list cols-2">
                   <div className="health-item"><span className="dot green" /><div><b>Data Pipeline</b><span>Operational · 5 min cache</span></div></div>
                   <div className="health-item"><span className="dot green" /><div><b>ML Detection Model</b><span>Active · Isolation Forest</span></div></div>
                   <div className="health-item"><span className={`dot ${anomalousStations > 0 ? 'amber' : 'green'}`} /><div><b>Weather Stations</b><span>{stations.length} connected · {anomalousStations} flagged</span></div></div>
@@ -224,7 +224,7 @@ export default function Dashboard() {
               <div className="card-header" style={{ padding: '22px 22px 0' }}>
                 <div>
                   <div className="card-title"><TriangleAlert size={15} color="#DC2626" /> Recent Anomalies</div>
-                  <div className="card-subtitle">Timestamp · sensor · observed · expected · deviation · severity</div>
+                  <div className="card-subtitle">Timestamp · sensor · observed · expected · score · severity</div>
                 </div>
                 <button className="btn btn-secondary" onClick={() => navigate('/anomalies')}>Open anomaly monitor <ArrowRight size={14} /></button>
               </div>
@@ -234,7 +234,7 @@ export default function Dashboard() {
                 ) : (
                   <div className="table-wrapper">
                     <table>
-                      <thead><tr><th>Timestamp</th><th>Sensor</th><th>Observed</th><th>Expected</th><th>Deviation</th><th>Severity</th><th>Status</th></tr></thead>
+                      <thead><tr><th>Timestamp</th><th>Sensor</th><th>Observed</th><th>Expected</th><th>Score</th><th>Severity</th><th>Status</th></tr></thead>
                       <tbody>
                         {recent.map((a) => (
                           <tr key={a.id} className={a.severity === 'High' ? 'row-anomalous' : a.severity === 'Medium' ? 'row-medium' : ''} onClick={() => navigate('/anomalies')}>

@@ -4,14 +4,12 @@ import { motion } from 'framer-motion';
 import {
   LineChart,
   Line,
-  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
   ResponsiveContainer,
-  ReferenceDot,
 } from 'recharts';
 import {
   MapPin,
@@ -24,12 +22,11 @@ import {
   AlertTriangle,
   CheckCircle,
   Navigation,
-  Info,
   X,
 } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import { SeverityBadge, StatusBadge, formatTime } from '../components/Badges';
-import { getStationById, getStationHistory, getAnomalies, BASE_URL } from '../services/api';
+import { getStationById, getAnomalies, BASE_URL } from '../services/api';
 
 const READINGS = [
   { key: 'temperature', label: 'Temperature', unit: '°C', icon: Thermometer, color: '#2563EB' },
@@ -72,19 +69,24 @@ const HistoryTooltip = ({ active, payload, label }) => {
 };
 
 function AnomalyDetailModal({ anomaly, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
   if (!anomaly) return null;
   // anomaly from AnomalyMonitoring has shape with expected_range string, plus display_parameter etc
   // But StationDetail anomalies come from getAnomalies(stationId) same shape
   // For detailed view we fetch /api/anomalies/{id} if needed; but quick display from passed object
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={onClose}>
+    <div role="dialog" aria-modal="true" aria-label={`Anomaly details ${anomaly.id}`} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={onClose}>
       <motion.div initial={{ opacity: 0, y: 20, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 16, maxWidth: 520, width: '100%', overflow: 'hidden' }}>
         <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}><AlertTriangle size={16} color="var(--status-high)" /> Anomaly Details — {anomaly.station_id} · {anomaly.id}</div>
           <button onClick={onClose} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: 6, cursor: 'pointer' }}><X size={14} color="var(--text-muted)" /></button>
         </div>
         <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="split-grid">
             <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: 12 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Observed</div>
               <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--status-high)', marginTop: 4 }}>{anomaly.anomaly_value ?? 'N/A'} <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{anomaly.parameter}</span></div>
@@ -96,7 +98,7 @@ function AnomalyDetailModal({ anomaly, onClose }) {
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Rolling mean ±2σ (window 5) or N/A for multivariate</div>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="split-grid">
             <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: 12 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Anomaly Score</div>
               <div style={{ fontSize: 18, fontWeight: 900, color: anomaly.anomaly_score >= 0.8 ? 'var(--status-high)' : 'var(--status-medium)', marginTop: 4 }}>{anomaly.anomaly_score}</div>

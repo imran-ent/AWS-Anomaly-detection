@@ -168,6 +168,7 @@ export default function ManualCheck() {
                   Station ID
                 </label>
                 <select
+                  aria-label="Station ID"
                   value={stationId}
                   onChange={(e) => setStationId(e.target.value)}
                   style={{
@@ -217,6 +218,7 @@ export default function ManualCheck() {
                   <input
                     type="number"
                     step="any"
+                    aria-label="Temperature in degrees Celsius"
                     value={temperature}
                     onChange={(e) => setTemperature(e.target.value)}
                     placeholder="e.g. 25.5"
@@ -269,6 +271,7 @@ export default function ManualCheck() {
                   <input
                     type="number"
                     step="any"
+                    aria-label="Humidity in percent"
                     value={humidity}
                     onChange={(e) => setHumidity(e.target.value)}
                     placeholder="e.g. 70.0"
@@ -321,6 +324,7 @@ export default function ManualCheck() {
                   <input
                     type="number"
                     step="any"
+                    aria-label="Pressure in hectopascals"
                     value={pressure}
                     onChange={(e) => setPressure(e.target.value)}
                     placeholder="e.g. 1012.4"
@@ -540,7 +544,7 @@ export default function ManualCheck() {
                     <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 8 }}>
                       Input Values
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
+                    <div className="trio-grid">
                       {[
                         { label: 'Temperature', value: result.input.temperature, unit: '°C', icon: Thermometer, color: 'var(--accent-cyan)' },
                         { label: 'Humidity', value: result.input.humidity, unit: '%', icon: Droplets, color: '#0284C7' },
@@ -562,13 +566,13 @@ export default function ManualCheck() {
                   </div>
 
                   {/* ML Details */}
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: 12,
-                    }}
-                  >
+                    <div
+                      className="split-grid"
+                      style={{
+                        display: 'grid',
+                        gap: 12,
+                      }}
+                    >
                     <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: 14 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Anomaly Score</div>
                       <div style={{ fontSize: 22, fontWeight: 900, marginTop: 4, color: isAnomaly ? 'var(--status-high)' : 'var(--status-normal)' }}>

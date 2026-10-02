@@ -51,6 +51,7 @@ function PressureCell({ value }) {
 export default function WeatherData() {
   const [stations, setStations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all');
   const [cityFilter, setCityFilter] = useState('All');
   const [search, setSearch] = useState('');
@@ -60,7 +61,7 @@ export default function WeatherData() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    getStations().then(setStations).finally(() => setLoading(false));
+    getStations().then(setStations).catch((e) => setError(e.message)).finally(() => setLoading(false));
   }, []);
 
   const cities = useMemo(() => {
@@ -103,17 +104,17 @@ export default function WeatherData() {
         {/* Filters — Phase 10,11,12 */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '12px 14px' }}>
           <Filter size={14} color="var(--text-muted)" />
-          <select value={cityFilter} onChange={(e) => setCityFilter(e.target.value)} style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 600 }}>
+          <select value={cityFilter} aria-label="Filter by city" onChange={(e) => setCityFilter(e.target.value)} style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 600 }}>
             {cities.map((c) => (<option key={c} value={c}>{c === 'All' ? 'All Stations' : c}</option>))}
           </select>
           <div style={{ display: 'flex', gap: 4 }}>
             {['all','anomalous','normal'].map((f) => (
-              <button key={f} onClick={() => setFilter(f)} style={{ padding: '6px 14px', borderRadius: 99, border: `1px solid ${filter===f ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`, background: filter===f ? 'var(--accent-cyan-dim)' : 'transparent', color: filter===f ? 'var(--accent-cyan)' : 'var(--text-secondary)', fontSize: 11, fontWeight: 700, textTransform: 'capitalize', cursor: 'pointer' }}>{f==='all'?`All (${stations.length})`:f==='anomalous'?`⚠ Anomalous (${anomalousCount})`:`✓ Normal (${stations.length - anomalousCount})`}</button>
+              <button key={f} onClick={() => setFilter(f)} aria-pressed={filter === f} style={{ padding: '6px 14px', borderRadius: 99, border: `1px solid ${filter===f ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`, background: filter===f ? 'var(--accent-cyan-dim)' : 'transparent', color: filter===f ? 'var(--accent-cyan)' : 'var(--text-secondary)', fontSize: 11, fontWeight: 700, textTransform: 'capitalize', cursor: 'pointer' }}>{f==='all'?`All (${stations.length})`:f==='anomalous'?`⚠ Anomalous (${anomalousCount})`:`✓ Normal (${stations.length - anomalousCount})`}</button>
             ))}
           </div>
           <div style={{ position: 'relative', flex: 1, minWidth: 160 }}>
             <Search size={14} color="var(--text-muted)" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search station, city, state…" style={{ width: '100%', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '7px 12px 7px 32px', fontSize: 12, color: 'var(--text-primary)', outline: 'none' }} />
+            <input value={search} aria-label="Search stations" onChange={(e) => setSearch(e.target.value)} placeholder="Search station, city, state…" style={{ width: '100%', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '7px 12px 7px 32px', fontSize: 12, color: 'var(--text-primary)', outline: 'none' }} />
           </div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Params:</span>
@@ -124,13 +125,15 @@ export default function WeatherData() {
               { key: 'rainfall', label: 'Rain' },
               { key: 'wind_speed', label: 'Wind' },
             ].map((p) => (
-              <button key={p.key} onClick={() => setVisibleParams((prev) => ({ ...prev, [p.key]: !prev[p.key] }))} style={{ padding: '4px 10px', borderRadius: 99, border: `1px solid ${visibleParams[p.key] ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`, background: visibleParams[p.key] ? 'var(--accent-cyan-dim)' : 'transparent', color: visibleParams[p.key] ? 'var(--accent-cyan)' : 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>{p.label}</button>
+              <button key={p.key} onClick={() => setVisibleParams((prev) => ({ ...prev, [p.key]: !prev[p.key] }))} aria-pressed={visibleParams[p.key]} style={{ padding: '4px 10px', borderRadius: 99, border: `1px solid ${visibleParams[p.key] ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`, background: visibleParams[p.key] ? 'var(--accent-cyan-dim)' : 'transparent', color: visibleParams[p.key] ? 'var(--accent-cyan)' : 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>{p.label}</button>
             ))}
           </div>
         </div>
 
         {loading ? (
-          <div className="loading-spinner"><div className="spinner" /><span className="loading-text">Loading station data…</span></div>
+          <div className="loading-spinner" role="status" aria-label="Loading station data"><div className="spinner" /><span className="loading-text">Loading station data…</span></div>
+        ) : error ? (
+          <div className="card"><div className="error-state"><b>Unable to retrieve monitoring data</b>Check the connection and try again.</div></div>
         ) : (
           <div className="card" style={{ padding: 0 }}>
             <div className="table-wrapper">

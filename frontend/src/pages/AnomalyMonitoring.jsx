@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   AreaChart,
@@ -19,7 +18,6 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  Info,
 } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import { SeverityBadge, formatTime } from '../components/Badges';
@@ -43,7 +41,8 @@ const DETECTION_LABELS = {
   NORMAL: 'Normal',
 };
 
-const SEVERITY_ORDER = { High: 0, Medium: 1, Low: 2 };
+const SEVERITY_ORDER = { Critical: 0, High: 0, Medium: 1, Low: 2 };
+const severityRank = (s) => SEVERITY_ORDER[s] ?? 99;
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
@@ -58,17 +57,22 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 function DetailModal({ anomaly, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
   if (!anomaly) return null;
   const isMultivariate = anomaly.detection_type === 'MULTIVARIATE' || anomaly.parameter === 'multivariate' || anomaly.detection_type === 'SENSOR_STUCK' || anomaly.detection_type === 'COMMUNICATION';
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={onClose}>
+    <div role="dialog" aria-modal="true" aria-label={`Anomaly details ${anomaly.id}`} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={onClose}>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 14, maxWidth: 520, width: '100%', overflow: 'hidden' }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--text-primary)' }}>Anomaly Details — {anomaly.id} · {anomaly.station_id}</div>
           <button onClick={onClose} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: 6, cursor: 'pointer' }}><X size={14} color="var(--text-muted)" /></button>
         </div>
         <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="split-grid">
             <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: 12 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Station / Time</div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginTop: 4 }}>{anomaly.station_id} · {PARAMETER_LABELS[anomaly.parameter] || anomaly.parameter}</div>
@@ -80,7 +84,7 @@ function DetailModal({ anomaly, onClose }) {
               <div style={{ marginTop: 4 }}><SeverityBadge severity={anomaly.severity} /></div>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="split-grid">
             <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: 12 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Observed</div>
               <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--status-high)', marginTop: 4 }}>{anomaly.anomaly_value ?? 'N/A'} <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{isMultivariate ? '' : anomaly.parameter}</span></div>
@@ -125,13 +129,13 @@ export default function AnomalyMonitoring() {
   const [sortBy, setSortBy] = useState('severity');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState(null);
+  const [error, setError] = useState(null);
   const perPage = 20;
-  const navigate = useNavigate();
 
   useEffect(() => {
     Promise.all([getAnomalies(), getAnomalyTrend(), getDashboardSummary(), getStations()])
       .then(([a, t, summary, st]) => {
-        const sorted = [...a].sort((x, y) => SEVERITY_ORDER[x.severity] - SEVERITY_ORDER[y.severity]);
+        const sorted = [...a].sort((x, y) => severityRank(x.severity) - severityRank(y.severity));
         setAnomalies(sorted);
         setTrend(t);
         if (summary && typeof summary.anomaliesDetected === 'number') setTotalAnomalies(summary.anomaliesDetected);
@@ -140,17 +144,17 @@ export default function AnomalyMonitoring() {
         if (a && a._isMock) setIsMock(true);
         if (Array.isArray(st)) setStations(st);
       })
+      .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
 
-  const now = new Date();
   const filtered = useMemo(() => {
     let out = [...anomalies];
     if (severityFilter !== 'All') out = out.filter((a) => a.severity === severityFilter);
     if (stationFilter !== 'All') out = out.filter((a) => a.station_id === stationFilter);
     if (paramFilter !== 'All') out = out.filter((a) => a.parameter === paramFilter);
     if (timeFilter !== 'All') {
-      const cutoff = new Date(now);
+      const cutoff = new Date();
       if (timeFilter === '24h') cutoff.setHours(cutoff.getHours() - 24);
       else if (timeFilter === '7d') cutoff.setDate(cutoff.getDate() - 7);
       else if (timeFilter === '30d') cutoff.setDate(cutoff.getDate() - 30);
@@ -161,7 +165,7 @@ export default function AnomalyMonitoring() {
       out = out.filter((a) => `${a.station_id} ${a.parameter} ${a.description} ${a.predicted_fault_type}`.toLowerCase().includes(q));
     }
     // sorting
-    if (sortBy === 'severity') out.sort((x, y) => SEVERITY_ORDER[x.severity] - SEVERITY_ORDER[y.severity]);
+    if (sortBy === 'severity') out.sort((x, y) => severityRank(x.severity) - severityRank(y.severity));
     else if (sortBy === 'timestamp') out.sort((x, y) => new Date(y.timestamp) - new Date(x.timestamp));
     else if (sortBy === 'score') out.sort((x, y) => y.anomaly_score - x.anomaly_score);
     return out;
@@ -202,7 +206,9 @@ export default function AnomalyMonitoring() {
         </div>
 
         {loading ? (
-          <div className="loading-spinner"><div className="spinner" /><span className="loading-text">Loading anomaly data…</span></div>
+          <div className="loading-spinner" role="status" aria-label="Loading anomaly data"><div className="spinner" /><span className="loading-text">Loading anomaly data…</span></div>
+        ) : error ? (
+          <div className="card"><div className="error-state"><b>Unable to retrieve monitoring data</b>Check the connection and try again.</div></div>
         ) : (
           <>
             <motion.div className="card mb-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
@@ -237,12 +243,12 @@ export default function AnomalyMonitoring() {
             <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '12px 14px' }}>
               <Filter size={14} color="var(--text-muted)" />
               {/* Station */}
-              <select value={stationFilter} onChange={(e) => setStationFilter(e.target.value)} style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 600 }}>
+              <select value={stationFilter} aria-label="Filter by station" onChange={(e) => setStationFilter(e.target.value)} style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 600 }}>
                 <option value="All">All Stations</option>
                 {stations.map((s) => (<option key={s.station_id} value={s.station_id}>{s.station_id} · {s.city || s.location}</option>))}
               </select>
               {/* Parameter */}
-              <select value={paramFilter} onChange={(e) => setParamFilter(e.target.value)} style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 600 }}>
+              <select value={paramFilter} aria-label="Filter by parameter" onChange={(e) => setParamFilter(e.target.value)} style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 600 }}>
                 <option value="All">All Parameters</option>
                 <option value="temperature">Temperature</option>
                 <option value="humidity">Humidity</option>
@@ -250,7 +256,7 @@ export default function AnomalyMonitoring() {
                 <option value="multivariate">Multivariate</option>
               </select>
               {/* Time */}
-              <select value={timeFilter} onChange={(e) => setTimeFilter(e.target.value)} style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 600 }}>
+              <select value={timeFilter} aria-label="Filter by time range" onChange={(e) => setTimeFilter(e.target.value)} style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 600 }}>
                 <option value="All">All Time</option>
                 <option value="24h">Last 24 Hours</option>
                 <option value="7d">Last 7 Days</option>
@@ -259,16 +265,16 @@ export default function AnomalyMonitoring() {
               {/* Severity */}
               <div style={{ display: 'flex', gap: 4 }}>
                 {['All','High','Medium','Low'].map((f) => (
-                  <button key={f} onClick={() => setSeverityFilter(f)} style={{ padding: '5px 12px', borderRadius: 99, border: `1px solid ${severityFilter===f ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`, background: severityFilter===f ? 'var(--accent-cyan-dim)' : 'transparent', color: severityFilter===f ? 'var(--accent-cyan)' : 'var(--text-secondary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{f}</button>
+                  <button key={f} onClick={() => setSeverityFilter(f)} aria-pressed={severityFilter === f} style={{ padding: '5px 12px', borderRadius: 99, border: `1px solid ${severityFilter===f ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`, background: severityFilter===f ? 'var(--accent-cyan-dim)' : 'transparent', color: severityFilter===f ? 'var(--accent-cyan)' : 'var(--text-secondary)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{f}</button>
                 ))}
               </div>
               {/* Search */}
               <div style={{ position: 'relative', flex: 1, minWidth: 160 }}>
                 <Search size={14} color="var(--text-muted)" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
-                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search station, param, fault…" style={{ width: '100%', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '7px 12px 7px 32px', fontSize: 12, color: 'var(--text-primary)', outline: 'none' }} />
+                <input value={search} aria-label="Search anomalies" onChange={(e) => setSearch(e.target.value)} placeholder="Search station, param, fault…" style={{ width: '100%', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '7px 12px 7px 32px', fontSize: 12, color: 'var(--text-primary)', outline: 'none' }} />
               </div>
               {/* Sort */}
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '6px 10px', fontSize: 11 }}>
+              <select value={sortBy} aria-label="Sort anomalies" onChange={(e) => setSortBy(e.target.value)} style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '6px 10px', fontSize: 11 }}>
                 <option value="severity">Sort: Severity</option>
                 <option value="timestamp">Sort: Recent</option>
                 <option value="score">Sort: Score</option>

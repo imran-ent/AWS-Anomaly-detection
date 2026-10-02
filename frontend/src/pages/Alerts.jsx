@@ -57,6 +57,7 @@ const cardVariants = {
 export default function Alerts() {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filter, setFilter] = useState('All');
   const [readState, setReadState] = useState({});
   const navigate = useNavigate();
@@ -71,6 +72,7 @@ export default function Alerts() {
         });
         setReadState(initial);
       })
+      .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
 
@@ -219,6 +221,7 @@ export default function Alerts() {
             <button
               key={f}
               onClick={() => setFilter(f)}
+              aria-pressed={filter === f}
               style={{
                 padding: '6px 16px',
                 borderRadius: 99,
@@ -237,10 +240,12 @@ export default function Alerts() {
         </div>
 
         {loading ? (
-          <div className="loading-spinner">
+          <div className="loading-spinner" role="status" aria-label="Loading alerts">
             <div className="spinner" />
             <span className="loading-text">Loading alerts…</span>
           </div>
+        ) : error ? (
+          <div className="card"><div className="error-state"><b>Unable to retrieve monitoring data</b>Check the connection and try again.</div></div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <AnimatePresence>

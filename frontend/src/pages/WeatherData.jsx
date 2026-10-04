@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import {
   Thermometer,
   Droplets,
@@ -17,15 +16,6 @@ import {
 import TopBar from '../components/TopBar';
 import { StatusBadge, formatTime } from '../components/Badges';
 import { getStations } from '../services/api';
-
-const rowVariants = {
-  hidden: { opacity: 0, x: -12 },
-  visible: (i) => ({
-    opacity: 1,
-    x: 0,
-    transition: { delay: i * 0.04, duration: 0.28 },
-  }),
-};
 
 function TempCell({ value }) {
   if (value == null) return <span style={{ color: 'var(--text-muted)' }}>N/A</span>;
@@ -76,7 +66,7 @@ export default function WeatherData() {
     if (cityFilter !== 'All') out = out.filter((s) => (s.city || s.location) === cityFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
-      out = out.filter((s) => `${s.station_id} ${s.location} ${s.city} ${s.state}`.toLowerCase().includes(q));
+      out = out.filter((s) => [s.station_id, s.location, s.city, s.state].filter(Boolean).join(' ').toLowerCase().includes(q));
     }
     return out;
   }, [stations, filter, cityFilter, search]);
@@ -84,8 +74,9 @@ export default function WeatherData() {
   useEffect(() => setPage(1), [filter, cityFilter, search]);
 
   const anomalousCount = stations.filter((s) => s.anomaly_status).length;
-  const pageCount = Math.ceil(filtered.length / perPage);
-  const pageData = filtered.slice((page - 1) * perPage, page * perPage);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / perPage));
+  const safePage = Math.min(page, pageCount);
+  const pageData = filtered.slice((safePage - 1) * perPage, safePage * perPage);
 
   return (
     <>
@@ -101,20 +92,20 @@ export default function WeatherData() {
           </div>
         </div>
 
-        {/* Filters — Phase 10,11,12 */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '12px 14px' }}>
-          <Filter size={14} color="var(--text-muted)" />
-          <select value={cityFilter} aria-label="Filter by city" onChange={(e) => setCityFilter(e.target.value)} style={{ background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 600 }}>
+        {/* Filters — unified .filter-bar system */}
+        <div className="filter-bar">
+          <span className="filter-title"><Filter size={14} color="var(--text-muted)" /> Filters</span>
+          <select value={cityFilter} aria-label="Filter by city" onChange={(e) => setCityFilter(e.target.value)} className="form-select">
             {cities.map((c) => (<option key={c} value={c}>{c === 'All' ? 'All Stations' : c}</option>))}
           </select>
           <div style={{ display: 'flex', gap: 4 }}>
             {['all','anomalous','normal'].map((f) => (
-              <button key={f} onClick={() => setFilter(f)} aria-pressed={filter === f} style={{ padding: '6px 14px', borderRadius: 99, border: `1px solid ${filter===f ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`, background: filter===f ? 'var(--accent-cyan-dim)' : 'transparent', color: filter===f ? 'var(--accent-cyan)' : 'var(--text-secondary)', fontSize: 11, fontWeight: 700, textTransform: 'capitalize', cursor: 'pointer' }}>{f==='all'?`All (${stations.length})`:f==='anomalous'?`⚠ Anomalous (${anomalousCount})`:`✓ Normal (${stations.length - anomalousCount})`}</button>
+              <button key={f} onClick={() => setFilter(f)} aria-pressed={filter === f} className={`pill-btn${filter === f ? ' active' : ''}`}>{f==='all'?`All (${stations.length})`:f==='anomalous'?`Anomalous (${anomalousCount})`:`Normal (${stations.length - anomalousCount})`}</button>
             ))}
           </div>
           <div style={{ position: 'relative', flex: 1, minWidth: 160 }}>
             <Search size={14} color="var(--text-muted)" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
-            <input value={search} aria-label="Search stations" onChange={(e) => setSearch(e.target.value)} placeholder="Search station, city, state…" style={{ width: '100%', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '7px 12px 7px 32px', fontSize: 12, color: 'var(--text-primary)', outline: 'none' }} />
+            <input value={search} aria-label="Search stations" onChange={(e) => setSearch(e.target.value)} placeholder="Search station, city, state…" className="form-input" style={{ width: '100%', paddingLeft: 32 }} />
           </div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Params:</span>
@@ -125,7 +116,7 @@ export default function WeatherData() {
               { key: 'rainfall', label: 'Rain' },
               { key: 'wind_speed', label: 'Wind' },
             ].map((p) => (
-              <button key={p.key} onClick={() => setVisibleParams((prev) => ({ ...prev, [p.key]: !prev[p.key] }))} aria-pressed={visibleParams[p.key]} style={{ padding: '4px 10px', borderRadius: 99, border: `1px solid ${visibleParams[p.key] ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`, background: visibleParams[p.key] ? 'var(--accent-cyan-dim)' : 'transparent', color: visibleParams[p.key] ? 'var(--accent-cyan)' : 'var(--text-muted)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>{p.label}</button>
+              <button key={p.key} onClick={() => setVisibleParams((prev) => ({ ...prev, [p.key]: !prev[p.key] }))} aria-pressed={visibleParams[p.key]} className={`pill-btn${visibleParams[p.key] ? ' active' : ''}`}>{p.label}</button>
             ))}
           </div>
         </div>
@@ -153,10 +144,10 @@ export default function WeatherData() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pageData.map((station, i) => {
+                  {pageData.map((station) => {
                     const rowClass = station.anomaly_status ? 'row-anomalous' : '';
                     return (
-                      <motion.tr key={station.station_id} className={rowClass} variants={rowVariants} initial="hidden" animate="visible" custom={i} onClick={() => navigate(`/stations/${station.station_id}`)} style={{ cursor: 'pointer' }}>
+                      <tr key={station.station_id} className={rowClass} onClick={() => navigate(`/stations/${station.station_id}`)} style={{ cursor: 'pointer' }} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/stations/${station.station_id}`); }}>
                         <td><span className="font-mono text-cyan" style={{ fontSize: 13, fontWeight: 700 }}>{station.station_id}</span></td>
                         <td><div style={{ fontWeight: 500 }}>{station.location}</div><div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{station.state}</div></td>
                         {visibleParams.temperature && <td><TempCell value={station.temperature} /></td>}
@@ -167,27 +158,27 @@ export default function WeatherData() {
                         <td><StatusBadge anomalyStatus={station.anomaly_status} /></td>
                         <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>{formatTime(station.timestamp)}</td>
                         <td><ChevronRight size={14} color="var(--text-muted)" /></td>
-                      </motion.tr>
+                      </tr>
                     );
                   })}
                 </tbody>
               </table>
             </div>
-            {filtered.length === 0 && <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-muted)', fontSize: 12 }}>No stations match filters.</div>}
+            {filtered.length === 0 && <div className="table-empty" role="status">No stations match the current filters. Try clearing search or choosing “All Stations”.</div>}
             {pageCount > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderTop: '1px solid var(--border-subtle)' }}>
-                <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p-1))} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: page<=1 ? 'var(--bg-elevated)' : 'var(--accent-cyan-dim)', color: page<=1 ? 'var(--text-muted)' : 'var(--accent-cyan)', cursor: page<=1?'not-allowed':'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><ChevronLeft size={14} />Prev</button>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Page {page} of {pageCount} · {filtered.length} stations (15 per page)</span>
-                <button disabled={page >= pageCount} onClick={() => setPage((p) => Math.min(pageCount, p+1))} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: page>=pageCount ? 'var(--bg-elevated)' : 'var(--accent-cyan-dim)', color: page>=pageCount ? 'var(--text-muted)' : 'var(--accent-cyan)', cursor: page>=pageCount?'not-allowed':'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>Next<ChevronRight size={14} /></button>
+              <div className="pagination-bar">
+                <button disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p-1))} className="pagination-btn" aria-label="Previous page"><ChevronLeft size={14} />Prev</button>
+                <span className="pagination-meta">Page {safePage} of {pageCount} · {filtered.length} stations (15 per page)</span>
+                <button disabled={safePage >= pageCount} onClick={() => setPage((p) => Math.min(pageCount, p+1))} className="pagination-btn" aria-label="Next page">Next<ChevronRight size={14} /></button>
               </div>
             )}
           </div>
         )}
 
         <div style={{ marginTop: 16, display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-          <span><span style={{ color: 'var(--status-high)' }}>■</span> Red border/highlight = ML flagged <strong>ANOMALY</strong> (multivariate pattern, backend truth)</span>
-          <span><span style={{ color: 'var(--status-high)' }}>■</span> Red value = value-level high/low (not ML verdict)</span>
-          <span><span style={{ color: 'var(--status-medium)' }}>■</span> Orange value = approaching threshold (not ML verdict)</span>
+          <span><span style={{ color: 'var(--status-high)' }}>▍</span> Row highlight = ML-flagged <strong>Anomaly</strong> (icon + text, not color alone)</span>
+          <span><span style={{ color: 'var(--status-high)' }}>■</span> Bold value = outside value-level guide range (not the ML verdict)</span>
+          <span><span style={{ color: 'var(--status-medium)' }}>■</span> Amber value = approaching guide threshold</span>
           <span>Only dataset params (temp/humidity/pressure) are ML inputs; rainfall/wind synthesized for table completeness (not used by model).</span>
           <span>Stations list is dynamic from <code>/api/stations</code> (29 cities), not hardcoded. Pagination prevents rendering 29+ rows issue.</span>
         </div>

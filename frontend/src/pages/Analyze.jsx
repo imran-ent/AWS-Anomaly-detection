@@ -22,13 +22,16 @@ export default function Analyze() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let cancelled = false;
     getManualStations()
       .then((d) => {
+        if (cancelled) return;
         const list = d?.stations || (Array.isArray(d) ? d : []);
         setStations(list);
         if (list[0]) setFallbackStation(list[0].station_id);
       })
-      .catch(() => {});
+      .catch(() => { if (!cancelled) setStations([]); });
+    return () => { cancelled = true; };
   }, []);
 
   const knownIds = new Set(stations.map((s) => s.station_id));
@@ -110,6 +113,7 @@ export default function Analyze() {
                             <span className="flex-row">
                               <SeverityBadge severity={r.prediction?.severity === 'none' ? 'Normal' : r.prediction?.severity} />
                               <span className="num text-muted" style={{ fontSize: 11 }}>score {r.prediction?.anomaly_score ?? '—'}</span>
+                              {r.used_station && <span className="text-muted" style={{ fontSize: 10 }}>via {r.used_station}</span>}
                             </span>
                           )}
                           {errors[i] && <span style={{ fontSize: 11.5, color: '#B91C1C' }}>{errors[i]}</span>}

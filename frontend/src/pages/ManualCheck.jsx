@@ -54,6 +54,9 @@ export default function ManualCheck() {
       setError('Temperature, Humidity and Pressure must be valid numbers.');
       return;
     }
+    if (t < -60 || t > 60 || h < 0 || h > 100 || p < 850 || p > 1100) {
+      setError('Values are outside physical plausibility (Temp −60…60 °C, Humidity 0…100 %, Pressure 850…1100 hPa). The model will flag this as a physical-range anomaly — submitted anyway for demonstration.');
+    }
     setLoading(true);
     try {
       const data = await manualSensorCheck({
@@ -546,9 +549,9 @@ export default function ManualCheck() {
                     </div>
                     <div className="trio-grid">
                       {[
-                        { label: 'Temperature', value: result.input.temperature, unit: '°C', icon: Thermometer, color: 'var(--accent-cyan)' },
-                        { label: 'Humidity', value: result.input.humidity, unit: '%', icon: Droplets, color: '#0284C7' },
-                        { label: 'Pressure', value: result.input.pressure, unit: 'hPa', icon: Gauge, color: '#B45309' },
+                        { label: 'Temperature', value: result.input?.temperature ?? result.values?.temperature ?? temperature, unit: '°C', icon: Thermometer, color: 'var(--accent-cyan)' },
+                        { label: 'Humidity', value: result.input?.humidity ?? result.values?.humidity ?? humidity, unit: '%', icon: Droplets, color: '#0284C7' },
+                        { label: 'Pressure', value: result.input?.pressure ?? result.values?.pressure ?? pressure, unit: 'hPa', icon: Gauge, color: '#B45309' },
                       ].map((r) => {
                         const Icon = r.icon;
                         return (
@@ -587,17 +590,17 @@ export default function ManualCheck() {
                       <div style={{ fontSize: 13, fontWeight: 800, marginTop: 6, color: 'var(--text-primary)' }}>
                         <span
                           className={
-                            result.prediction.severity === 'critical' || result.prediction.severity === 'high'
+                            String(result.prediction.severity ?? '').toLowerCase() === 'critical' || String(result.prediction.severity ?? '').toLowerCase() === 'high'
                               ? 'badge badge-high'
-                              : result.prediction.severity === 'medium'
+                              : String(result.prediction.severity ?? '').toLowerCase() === 'medium'
                               ? 'badge badge-medium'
-                              : result.prediction.severity === 'low'
+                              : String(result.prediction.severity ?? '').toLowerCase() === 'low'
                               ? 'badge badge-low'
                               : 'badge badge-normal'
                           }
                           style={{ textTransform: 'capitalize' }}
                         >
-                          {result.prediction.severity}
+                          {String(result.prediction.severity ?? 'Normal')}
                         </span>
                         <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-muted)' }}>
                           conf {result.prediction.confidence ?? '—'}

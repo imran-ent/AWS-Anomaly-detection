@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Radio, TriangleAlert, Bell, FlaskConical, Info, Menu, X, ShieldCheck, UploadCloud } from 'lucide-react';
 import { getDashboardSummary } from '../services/api';
 
@@ -17,6 +17,16 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [anomalyBadge, setAnomalyBadge] = useState(null);
   const [healthy, setHealthy] = useState(true);
+  const location = useLocation();
+
+  // Close mobile menu on route change or Escape
+  useEffect(() => { setOpen(false); }, [location.pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open ]);
 
   useEffect(() => {
     let cancelled = false;

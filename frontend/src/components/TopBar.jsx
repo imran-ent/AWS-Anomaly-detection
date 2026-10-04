@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-export default function TopBar({ title, subtitle }) {
+export default function TopBar({ title, subtitle, status = 'operational', statusLabel }) {
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -36,9 +36,9 @@ export default function TopBar({ title, subtitle }) {
             {dateFmt} &nbsp;|&nbsp; IST {fmt}
           </span>
 
-          <div className="system-status-pill">
-            <span className="status-dot-live" />
-            Operational
+          <div className={`system-status-pill${status === 'demo' ? ' warn' : ''}`} role="status">
+            <span className="status-dot-live" aria-hidden="true" />
+            {statusLabel ?? (status === 'demo' ? 'Demo Data' : 'Operational')}
           </div>
         </div>
       </div>

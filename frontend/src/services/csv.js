@@ -10,19 +10,25 @@ const TIME_KEYS = ['timestamp', 'datetime', 'date', 'time', 'observation_time'];
 const norm = (s) => String(s || '').trim().toLowerCase().replace(/[()]/g, '').replace(/\s+/g, ' ').trim();
 
 export function parseCSV(text) {
+  const clean = String(text || '').replace(/^\uFEFF/, '');
+  // Auto-detect delimiter (comma vs semicolon) from first non-empty line
+  const firstLine = clean.split(/\r?\n/).find((l) => l.trim() !== '') || '';
+  const commas = (firstLine.match(/,/g) || []).length;
+  const semis = (firstLine.match(/;/g) || []).length;
+  const delim = semis > commas ? ';' : ',';
   const rows = [];
   let cur = [''];
   let inQuotes = false;
   const push = () => { rows.push(cur); cur = ['']; };
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
+  for (let i = 0; i < clean.length; i++) {
+    const ch = clean[i];
     if (inQuotes) {
       if (ch === '"') {
-        if (text[i + 1] === '"') { cur[cur.length - 1] += '"'; i++; }
+        if (clean[i + 1] === '"') { cur[cur.length - 1] += '"'; i++; }
         else inQuotes = false;
       } else cur[cur.length - 1] += ch;
     } else if (ch === '"') inQuotes = true;
-    else if (ch === ',') cur.push('');
+    else if (ch === delim) cur.push('');
     else if (ch === '\n') push();
     else if (ch === '\r') { /* skip, handled by \n */ }
     else cur[cur.length - 1] += ch;
@@ -41,7 +47,10 @@ export function parseCSV(text) {
 
 function findKey(headers, candidates) {
   const map = new Map(headers.map((h) => [norm(h), h]));
-  for (const c of candidates) if (map.has(c)) return map.get(c);
+  for (const c of candidates) {
+    const key = norm(c);
+    if (map.has(key)) return map.get(key);
+  }
   return null;
 }
 

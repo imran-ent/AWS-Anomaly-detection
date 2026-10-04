@@ -30,15 +30,27 @@ export function isMockMode() { return lastFetchWasMock; }
 // - If fetch succeeds, returns real data
 // - If fetch fails and allowMock=true AND USE_MOCK=true, returns mock data marked with _isMock flag
 // - Otherwise throws so caller can show "Backend connection unavailable" error (production behavior)
+async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 async function fetchWithFallback(url, fallbackFn, { allowMock = true, label = 'data' } = {}) {
   try {
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
     const data = await res.json();
     lastFetchWasMock = false;
     return data;
   } catch (e) {
-    console.warn(`Backend fetch failed for ${url}: ${e.message}`);
+    if (e?.name === 'AbortError') console.warn(`Backend fetch timed out for ${url}`);
+    else console.warn(`Backend fetch failed for ${url}: ${e.message}`);
     const mockAllowed = allowMock && USE_MOCK;
     if (!mockAllowed) {
       lastFetchWasMock = false;
@@ -60,7 +72,7 @@ async function fetchWithFallback(url, fallbackFn, { allowMock = true, label = 'd
 
 // Health check helper — no fallback, purely backend status
 export async function getHealth() {
-  const res = await fetch(`${BASE_URL}/api/health`);
+  const res = await fetchWithTimeout(`${BASE_URL}/api/health`, {}, 8000);
   if (!res.ok) throw new Error(`Health check failed: ${res.status}`);
   return res.json();
 }
@@ -99,8 +111,13 @@ export async function getAlerts() {
 }
 
 // ─── GET /stations/:id/history ────────────────────────────────────────────────
-export async function getStationHistory(id) {
-  return fetchWithFallback(`${BASE_URL}/api/stations/${id}/history`, async () => {
+export async function getStationHistory(id, hours = null, parameter = null) {
+  let url = `${BASE_URL}/api/stations/${id}/history`;
+  const qs = new URLSearchParams();
+  if (hours) qs.append('hours', hours);
+  if (parameter) qs.append('parameter', parameter);
+  if ([...qs].length) url += `?${qs.toString()}`;
+  return fetchWithFallback(url, async () => {
     const history = historyData[id];
     if (!history) return [];
     return history;
@@ -110,16 +127,29 @@ export async function getStationHistory(id) {
 // ─── GET /dashboard/summary ───────────────────────────────────────────────────
 export async function getDashboardSummary() {
   // For dashboard summary we prefer to surface backend error rather than hide it with mock 15 stations
-  // Keep mock as offline fallback but marked DEMO DATA
+  // Keep mock as offline fallback but marked DEMO DATA — shape matches backend contract
   return fetchWithFallback(`${BASE_URL}/api/dashboard/summary`, async () => {
     const stations = stationsData;
     const anomalies = anomaliesData;
     const alerts = alertsData;
     const today = new Date().toISOString().slice(0, 10);
+    const high = anomalies.filter((a) => a.severity === 'High' || a.severity === 'Critical').length;
+    const medium = anomalies.filter((a) => a.severity === 'Medium').length;
+    const low = anomalies.filter((a) => a.severity === 'Low').length;
     return {
+      totalRecords: 300 * stations.length,
       totalStations: stations.length,
+      stationsOnline: stations.length,
+      anomaliesDetected: anomalies.length,
+      totalAnomalies: anomalies.length,
+      normalReadings: 300 * stations.length - anomalies.length,
+      highSeverity: high,
+      criticalSeverity: anomalies.filter((a) => a.severity === 'Critical').length,
+      mediumSeverity: medium,
+      lowSeverity: low,
       anomaliesToday: anomalies.filter((a) => a.timestamp.startsWith(today)).length,
       activeAlerts: alerts.filter((a) => !a.read).length,
+      latestTimestamp: anomalies[0]?.timestamp ?? null,
       systemStatus: 'Operational',
       _isMock: true,
       _demoLabel: 'DEMO DATA — backend unavailable',
@@ -185,8 +215,10 @@ export async function manualSensorCheck({ station_id, temperature, humidity, pre
   try {
     return await tryFetch(`${BASE_URL}/api/manual-check`);
   } catch (e) {
-    // If manual-check 404, try /api/predict spec endpoint
-    if (String(e.message).includes('404') || String(e.message).includes('Not Found')) {
+    // Only fall back on genuine 404 (endpoint missing), not validation errors.
+    const status404 = /HTTP 404|^404\b|Not Found/i.test(String(e.message)) && /manual-check|predict/i.test(String(e.message));
+    const isEndpoint404 = /HTTP 404 for .*manual-check/.test(String(e.message));
+    if (status404 || isEndpoint404) {
       return await tryFetch(`${BASE_URL}/api/predict`);
     }
     throw e;
@@ -239,9 +271,11 @@ export async function getTrends(days = 7, stationId = null, parameter = null) {
   return fetchWithFallback(url, async () => ({ trend: [] }), { label: 'trends' });
 }
 export async function getAnomalyById(id) {
-  const res = await fetch(`${BASE_URL}/api/anomalies/${id}`);
-  if (!res.ok) throw new Error(`Anomaly ${id} fetch failed: ${res.status}`);
-  return res.json();
+  return fetchWithFallback(`${BASE_URL}/api/anomalies/${id}`, async () => {
+    const found = anomaliesData.find((a) => String(a.id) === String(id));
+    if (!found) throw new Error(`Anomaly ${id} not found (backend offline)`);
+    return found;
+  }, { label: `anomaly ${id}` });
 }
 // Time/Station/Parameter filtered anomalies helper
 export async function getAnomaliesFiltered({ stationId = null, severity = null, parameter = null, limit = 100 } = {}) {
@@ -253,7 +287,11 @@ export async function getAnomaliesFiltered({ stationId = null, severity = null, 
   // parameter filtering is client-side (backend does not filter param yet), but fetch then filter
   const data = await fetchWithFallback(url, async () => [...anomaliesData].slice(0, limit), { label: 'anomalies filtered' });
   if (parameter && parameter !== 'All') {
-    return data.filter(a => (a.parameter === parameter) || (a.display_parameter === parameter));
+    const want = String(parameter).toLowerCase();
+    return (Array.isArray(data) ? data : []).filter((a) => {
+      const p = String(a.parameter ?? a.display_parameter ?? '').toLowerCase();
+      return p === want;
+    });
   }
   return data;
 }

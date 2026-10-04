@@ -45,16 +45,24 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    Promise.all([getDashboardSummary(), getAnomalyTrend(), getDataQuality(), getModelPerformance(), getModelInfo(), getPipeline(), getStations(), getAnomalies()])
-      .then(([s, t, dq, mp, mi, pl, st, an]) => {
-        setSummary(s); setTrend(t); setDataQuality(dq);
-        setModelPerf(mp); setModelInfo(mi); setPipeline(pl);
+    let cancelled = false;
+    Promise.allSettled([getDashboardSummary(), getAnomalyTrend(), getDataQuality(), getModelPerformance(), getModelInfo(), getPipeline(), getStations(), getAnomalies()])
+      .then((results) => {
+        if (cancelled) return;
+        const [s, t, dq, mp, mi, pl, st, an] = results.map((r) => (r.status === 'fulfilled' ? r.value : null));
+        if (s) { setSummary(s); if (s?._isMock) setDemoMode(true); }
+        if (t) setTrend(Array.isArray(t) ? t : t?.trend ?? []);
+        if (dq) setDataQuality(dq);
+        if (mp) setModelPerf(mp);
+        if (mi) setModelInfo(mi);
+        if (pl) setPipeline(pl);
         if (Array.isArray(st)) setStations(st);
         if (Array.isArray(an)) setRecent(an.slice(0, 8));
-        if (s?._isMock) setDemoMode(true);
+        if (!s && !st && !an) setFailed(true);
       })
-      .catch(() => setFailed(true))
-      .finally(() => setLoading(false));
+      .catch(() => { if (!cancelled) setFailed(true); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, []);
 
   const env = useMemo(() => {
@@ -74,7 +82,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <TopBar title="Weather Monitoring Overview" subtitle={`Station status · data freshness · model status${demoMode ? ' · Demo data (backend offline)' : ''}`} />
+      <TopBar title="Weather Monitoring Overview" subtitle={`Station status · data freshness · model status${demoMode ? ' · Demo data (backend offline)' : ''}`} status={demoMode ? 'demo' : 'operational'} />
 
       <div className="page-wrapper">
         {/* HERO */}
@@ -123,7 +131,7 @@ export default function Dashboard() {
         {loading ? (
           <DashboardSkeleton />
         ) : failed ? (
-          <div className="card"><div className="error-state"><b>Unable to retrieve monitoring data</b>Check the connection and try again.</div></div>
+          <div className="card"><div className="error-state" role="alert"><b>Unable to retrieve monitoring data</b>Check that the backend is running at the configured API URL, then try again.<div className="retry-row"><button className="btn btn-primary" onClick={() => window.location.reload()}>Retry</button></div></div></div>
         ) : (
           <>
             <div className="overview-strip" role="status">
@@ -166,7 +174,7 @@ export default function Dashboard() {
                       <YAxis tick={AXIS} axisLine={false} tickLine={false} width={30} />
                       <Tooltip content={<ChartTooltip />} />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
-                      <Area type="monotone" dataKey="high" name="Critical" stroke="#DC2626" strokeWidth={2.5} fill="url(#dHigh)" dot={false} activeDot={{ r: 5, fill: '#DC2626' }} />
+                      <Area type="monotone" dataKey="high" name="High" stroke="#DC2626" strokeWidth={2.5} fill="url(#dHigh)" dot={false} activeDot={{ r: 5, fill: '#DC2626' }} />
                       <Area type="monotone" dataKey="medium" name="Medium" stroke="#D97706" strokeWidth={2.5} fill="url(#dMed)" dot={false} activeDot={{ r: 4 }} />
                       <Area type="monotone" dataKey="low" name="Low" stroke="#0284C7" strokeWidth={2.5} fill="url(#dLow)" dot={false} activeDot={{ r: 4 }} />
                     </AreaChart>
@@ -186,6 +194,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div className="chart-container chart-scroll"><div className="chart-scroll-inner" style={{ height: '100%' }}>
+                  {trend?.length ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={trend}>
                       <defs>
@@ -198,6 +207,9 @@ export default function Dashboard() {
                       <Bar dataKey="anomalies" name="Anomalies" fill="url(#dBar)" radius={[5, 5, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
+                  ) : (
+                    <NoAnomalies lastChecked={lastUpdated} />
+                  )}
                 </div></div>
               </div>
               <div className="card">

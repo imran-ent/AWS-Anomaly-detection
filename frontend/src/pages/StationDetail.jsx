@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import TopBar from '../components/TopBar';
 import { SeverityBadge, StatusBadge, formatTime } from '../components/Badges';
-import { getStationById, getAnomalies, BASE_URL } from '../services/api';
+import { getStationById, getAnomalies, getStationHistory } from '../services/api';
 
 const READINGS = [
   { key: 'temperature', label: 'Temperature', unit: '°C', icon: Thermometer, color: '#2563EB' },
@@ -136,12 +136,13 @@ export default function StationDetail() {
   const [hours, setHours] = useState(24);
   const [selectedAnomaly, setSelectedAnomaly] = useState(null);
 
+  const [historyError, setHistoryError] = useState(null);
+
   const loadHistory = (param, h) => {
-    // Use direct fetch to include parameter bounds
-    const url = `${BASE_URL}/api/stations/${stationId}/history?hours=${h}&parameter=${param}`;
-    return fetch(url).then((r) => {
-      if (!r.ok) throw new Error(`History fetch failed ${r.status}`);
-      return r.json();
+    setHistoryError(null);
+    return getStationHistory(stationId, h, param).catch((e) => {
+      setHistoryError(e.message);
+      return [];
     });
   };
 
@@ -205,10 +206,10 @@ export default function StationDetail() {
 
   return (
     <>
-      <TopBar title={`${station.location} — ${station.station_id}`} subtitle={`${station.state} · Elevation ${station.elevation}m · Latest window readings`} />
+      <TopBar title={`${station.location} — ${station.station_id}`} subtitle={`${station.state} · Elevation ${station.elevation ?? '—'}m · Latest window readings`} />
 
       <div className="page-wrapper">
-        <button onClick={() => navigate(-1)} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20, cursor: 'pointer', background: 'none', border: 'none', transition: 'color var(--transition)' }} onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent-cyan)')} onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}><ArrowLeft size={15} />Back to Stations</button>
+        <button onClick={() => navigate('/weather')} aria-label="Back to stations" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20, cursor: 'pointer', background: 'none', border: 'none', transition: 'color var(--transition)' }} onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent-cyan)')} onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}><ArrowLeft size={15} />Back to Stations</button>
 
         <div className="station-detail-grid">
           <motion.div className="glass-card" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.35 }}>
@@ -252,8 +253,8 @@ export default function StationDetail() {
                 const value = station[r.key];
                 return (
                   <div className="reading-item" key={r.key}>
-                    <div style={{ marginBottom: 8 }}><Icon size={18} color={r.color} /></div>
-                    <div className="reading-value" style={{ color: r.color }}>{value}</div>
+                    <div style={{ marginBottom: 8 }}><Icon size={18} color={r.color} aria-hidden="true" /></div>
+                    <div className="reading-value" style={{ color: r.color }}>{value ?? '—'}</div>
                     <div className="reading-unit">{r.unit}</div>
                     <div className="reading-label">{r.label}</div>
                   </div>
@@ -297,8 +298,10 @@ export default function StationDetail() {
             </div>
           </div>
 
-          {historyFormatted.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 13 }}>No history data available for this station.</div>
+          {historyError ? (
+            <div className="error-state" role="alert"><b>History unavailable</b>{historyError}<div className="retry-row"><button className="btn btn-secondary" onClick={() => loadHistory(selectedParam, hours).then(setHistory)}>Retry history</button></div></div>
+          ) : historyFormatted.length === 0 ? (
+            <div className="empty-state" role="status"><b>No history data available</b><p>No readings returned for this station and time range.</p></div>
           ) : (
             <div className="chart-container-tall">
               <ResponsiveContainer width="100%" height="100%">
@@ -348,7 +351,7 @@ export default function StationDetail() {
                 <tbody>
                   {anomalies.map((a, i) => (
                     <tr key={a.id || i} className={a.severity === 'High' ? 'row-anomalous' : a.severity === 'Medium' ? 'row-medium' : ''} onClick={() => setSelectedAnomaly(a)} style={{ cursor: 'pointer' }}>
-                      <td style={{ fontWeight: 500, textTransform: 'capitalize' }}>{a.parameter.replace('_', ' ')} <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>score {a.anomaly_score}</span></td>
+                      <td style={{ fontWeight: 500, textTransform: 'capitalize' }}>{String(a.parameter ?? '').replace('_', ' ') || '—'} <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>score {a.anomaly_score ?? '—'}</span></td>
                       <td><span style={{ fontWeight: 800, fontSize: 15, color: a.severity === 'High' ? 'var(--status-high)' : a.severity === 'Medium' ? 'var(--status-medium)' : 'var(--status-low)' }}>{a.anomaly_value ?? 'N/A'}</span></td>
                       <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-secondary)' }}>{a.expected_range}</td>
                       <td><span className="badge badge-medium" style={{ fontSize: 10 }}>{a.detection_type ?? '—'}</span></td>

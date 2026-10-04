@@ -41,8 +41,8 @@ const DETECTION_LABELS = {
   NORMAL: 'Normal',
 };
 
-const SEVERITY_ORDER = { Critical: 0, High: 0, Medium: 1, Low: 2 };
-const severityRank = (s) => SEVERITY_ORDER[s] ?? 99;
+const SEVERITY_ORDER = { Critical: 0, High: 1, Medium: 2, Low: 3, Normal: 4 };
+const severityRank = (s) => SEVERITY_ORDER[String(s ?? '').trim()] ?? 99;
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
@@ -65,8 +65,8 @@ function DetailModal({ anomaly, onClose }) {
   if (!anomaly) return null;
   const isMultivariate = anomaly.detection_type === 'MULTIVARIATE' || anomaly.parameter === 'multivariate' || anomaly.detection_type === 'SENSOR_STUCK' || anomaly.detection_type === 'COMMUNICATION';
   return (
-    <div role="dialog" aria-modal="true" aria-label={`Anomaly details ${anomaly.id}`} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={onClose}>
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 14, maxWidth: 520, width: '100%', overflow: 'hidden' }}>
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-label={`Anomaly details ${anomaly.id}`} onClick={onClose}>
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} onClick={(e) => e.stopPropagation()} className="modal-box">
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontWeight: 800, fontSize: 13, color: 'var(--text-primary)' }}>Anomaly Details — {anomaly.id} · {anomaly.station_id}</div>
           <button onClick={onClose} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: 6, cursor: 'pointer' }}><X size={14} color="var(--text-muted)" /></button>
@@ -104,7 +104,7 @@ function DetailModal({ anomaly, onClose }) {
           <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--text-muted)', flexWrap: 'wrap' }}>
             <span>GT: <strong style={{ color: anomaly.ground_truth_label === 'Anomaly' ? 'var(--status-high)' : 'var(--status-normal)' }}>{anomaly.ground_truth_label ?? 'N/A'}</strong> {anomaly.ground_truth_fault_type && anomaly.ground_truth_fault_type !== 'Normal' ? `(${anomaly.ground_truth_fault_type})` : ''}</span>
             <span>·</span>
-            <span>ML: <strong style={{ color: anomaly.ml_label === 'Anomaly' ? 'var(--status-high)' : 'var(--status-normal)' }}>{anomaly.ml_label ?? '—'}</strong> ({anomaly.predicted_fault_type})</span>
+            <span>ML: <strong style={{ color: anomaly.ml_label === 'Anomaly' ? 'var(--status-high)' : 'var(--status-normal)' }}>{anomaly.ml_label ?? '—'}</strong>{anomaly.predicted_fault_type ? ` (${anomaly.predicted_fault_type})` : ''}</span>
             <span>·</span>
             <span>{anomaly.detection_type}</span>
           </div>
@@ -162,12 +162,12 @@ export default function AnomalyMonitoring() {
     }
     if (search.trim()) {
       const q = search.toLowerCase();
-      out = out.filter((a) => `${a.station_id} ${a.parameter} ${a.description} ${a.predicted_fault_type}`.toLowerCase().includes(q));
+      out = out.filter((a) => [a.station_id, a.parameter, a.description, a.explanation, a.predicted_fault_type].filter(Boolean).join(' ').toLowerCase().includes(q));
     }
-    // sorting
+    // sorting (numeric-safe)
     if (sortBy === 'severity') out.sort((x, y) => severityRank(x.severity) - severityRank(y.severity));
     else if (sortBy === 'timestamp') out.sort((x, y) => new Date(y.timestamp) - new Date(x.timestamp));
-    else if (sortBy === 'score') out.sort((x, y) => y.anomaly_score - x.anomaly_score);
+    else if (sortBy === 'score') out.sort((x, y) => (Number(y.anomaly_score) || 0) - (Number(x.anomaly_score) || 0));
     return out;
   }, [anomalies, severityFilter, stationFilter, paramFilter, timeFilter, search, sortBy]);
 
@@ -231,7 +231,7 @@ export default function AnomalyMonitoring() {
                     <YAxis tick={{ fill: '#718096', fontSize: 11 }} axisLine={false} tickLine={false} width={28} />
                     <Tooltip content={<CustomTooltip />} />
                     <Legend wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
-                    <Area type="monotone" dataKey="high" name="Critical" stroke="#DC2626" strokeWidth={2.5} fill="url(#gHigh)" dot={false} activeDot={{ r: 5, fill: '#DC2626' }} />
+                    <Area type="monotone" dataKey="high" name="High" stroke="#DC2626" strokeWidth={2.5} fill="url(#gHigh)" dot={false} activeDot={{ r: 5, fill: '#DC2626' }} />
                     <Area type="monotone" dataKey="medium" name="Medium" stroke="#D97706" strokeWidth={2.5} fill="url(#gMed)" dot={false} activeDot={{ r: 4 }} />
                     <Area type="monotone" dataKey="low" name="Low" stroke="#0284C7" strokeWidth={2.5} fill="url(#gLow)" dot={false} activeDot={{ r: 4 }} />
                   </AreaChart>

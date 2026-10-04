@@ -65,10 +65,12 @@ export default function Alerts() {
   useEffect(() => {
     getAlerts()
       .then((data) => {
-        setAlerts(data);
+        setAlerts(Array.isArray(data) ? data : []);
         const initial = {};
-        data.forEach((a) => {
-          initial[a.id] = a.read;
+        let stored = {};
+        try { stored = JSON.parse(localStorage.getItem('wg-read-state') || '{}'); } catch { stored = {}; }
+        (Array.isArray(data) ? data : []).forEach((a) => {
+          initial[a.id] = stored[a.id] ?? a.read ?? false;
         });
         setReadState(initial);
       })
@@ -84,16 +86,22 @@ export default function Alerts() {
 
   const unreadCount = Object.values(readState).filter((v) => !v).length;
 
+  const persistRead = (next) => {
+    setReadState(next);
+    try { localStorage.setItem('wg-read-state', JSON.stringify(next)); } catch { /* storage unavailable */ }
+  };
+
   const markAllRead = () => {
     const allRead = {};
     alerts.forEach((a) => {
       allRead[a.id] = true;
     });
-    setReadState(allRead);
+    persistRead(allRead);
   };
 
   const toggleRead = (id) => {
-    setReadState((prev) => ({ ...prev, [id]: !prev[id] }));
+    const next = { ...readState, [id]: !readState[id] };
+    persistRead(next);
   };
 
   return (
